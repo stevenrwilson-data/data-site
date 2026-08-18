@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cluster Analysis — Steven R Wilson</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Montserrat:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --field:#041F2C;
+    --blue:#08415C;
+    --plum:#511730;
+    --brick:#8E443D;
+    --salmon:#F7A399;
+    --sand:#E0D68A;
+    --plate:#F4F0E6;
+    --plum-ink:#3A0F21;
+    --moss:#2C5E4F;
+    --rule:rgba(247,163,153,.24);
+    --maxw:1140px;
+    --font-display:'Archivo Black',sans-serif;
+    --font-body:'Montserrat',system-ui,sans-serif;
+    --font-code:'Source Code Pro',ui-monospace,monospace;
+
+    --accent:var(--moss);
+    --accent-head:var(--sand);
+    --accent-copy:var(--salmon);
+    --accent-rule:rgba(224,214,138,.3);
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto;}
+    *{transition:none !important;}
+  }
+
+  body{
+    margin:0;
+    background:var(--field);
+    color:var(--salmon);
+    font-family:var(--font-body);
+    font-size:17px;line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{max-width:var(--maxw);margin:0 auto;padding:0 24px;}
+  a{color:inherit;}
+  :focus-visible{outline:3px solid var(--sand);outline-offset:3px;}
+
+  /* ---------- nav ---------- */
+  .nav{
+    position:sticky;top:0;z-index:10;
+    background:var(--field);
+    border-bottom:1px solid var(--rule);
+  }
+  .nav .wrap{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:24px;height:70px;
+  }
+  .mark{
+    font-family:var(--font-display);
+    font-size:15px;color:var(--sand);text-decoration:none;
+    white-space:nowrap;
+  }
+  .nav a.navlink{
+    text-decoration:none;font-size:13px;font-weight:600;
+    letter-spacing:.14em;text-transform:uppercase;
+    color:var(--salmon);padding:6px 0;
+    border-bottom:2px solid transparent;
+    transition:border-color .18s ease,color .18s ease;
+  }
+  .nav a.navlink:hover{color:var(--sand);border-bottom-color:var(--sand);}
+
+  /* ---------- accent band ---------- */
+  .band{background:var(--accent);padding:76px 0 68px;}
+  .band .eyebrow{
+    font-size:12px;font-weight:700;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--accent-copy);
+    margin:0 0 18px;
+  }
+  .band h1{
+    font-family:var(--font-display);
+    font-size:clamp(34px,6.6vw,74px);
+    line-height:.96;letter-spacing:-.02em;
+    color:var(--accent-head);margin:0 0 26px;
+    text-transform:uppercase;
+  }
+  .band .sub{
+    font-size:clamp(17px,2.2vw,24px);
+    font-weight:600;color:var(--accent-copy);
+    max-width:44ch;margin:0;
+  }
+
+  /* ---------- body sections ---------- */
+  .sec{padding:70px 0;border-bottom:1px solid var(--rule);}
+  .sec:last-of-type{border-bottom:none;}
+  .sec .eyebrow{
+    font-size:12px;font-weight:700;letter-spacing:.22em;
+    text-transform:uppercase;color:var(--brick);
+    margin:0 0 14px;
+  }
+  .sec h2{
+    font-family:var(--font-display);
+    font-size:clamp(24px,3.6vw,38px);
+    line-height:1.05;letter-spacing:-.015em;
+    color:var(--sand);margin:0 0 12px;
+    text-transform:uppercase;
+  }
+  .sec h2 + .rule{
+    width:64px;height:4px;border-radius:999px;
+    background:var(--accent);margin:0 0 30px;
+  }
+  .sec p{max-width:64ch;margin:0;}
+  .sec p + p{margin-top:22px;}
+  .sec .lede{
+    font-size:clamp(19px,2.3vw,24px);
+    font-weight:600;color:var(--sand);line-height:1.45;
+  }
+  .sec h3{
+    font-family:var(--font-body);
+    font-size:13px;font-weight:700;
+    letter-spacing:.18em;text-transform:uppercase;
+    color:var(--brick);margin:36px 0 10px;
+  }
+
+  /* ---------- footer ---------- */
+  footer{
+    padding:44px 0 60px;
+    border-top:1px solid var(--rule);
+    font-size:13px;color:var(--salmon);
+  }
+  footer .wrap{
+    display:flex;align-items:baseline;justify-content:space-between;
+    gap:20px;flex-wrap:wrap;
+  }
+  .backlink{
+    text-decoration:none;font-weight:600;
+    letter-spacing:.06em;color:var(--sand);
+  }
+  .backlink .arw{display:inline-block;transition:transform .22s ease;}
+  .backlink:hover .arw{transform:translateX(-5px);}
+
+  @media (max-width:820px){
+    .band{padding:52px 0 46px;}
+    .sec{padding:50px 0;}
+    .mark{font-size:13px;}
+    .nav a.navlink{font-size:11px;letter-spacing:.1em;}
+    footer{padding:30px 0 40px;}
+  }
+</style>
+</head>
+<body>
+
+<nav class="nav">
+  <div class="wrap">
+    <a class="mark" href="../index.html">Steven R Wilson</a>
+    <a class="navlink" href="../index.html#projects">All projects</a>
+  </div>
+</nav>
+
+<header class="band">
+  <div class="wrap">
+    <p class="eyebrow">Project 5 of 6</p>
+    <h1>Cluster Analysis</h1>
+    <p class="sub">[ONE-LINE SUBTITLE — THE QUESTION THIS PROJECT ANSWERS]</p>
+  </div>
+</header>
+
+<main>
+
+  <section class="sec">
+    <p class="eyebrow">Overview</p>
+    <h2>[SECTION SUBTITLE]</h2>
+    <div class="rule"></div>
+    <p class="lede">[LEDE — ONE SENTENCE STATING THE FINDING]</p>
+    <p>[BODY COPY]</p>
+    <p>[BODY COPY]</p>
+  </section>
+
+  <section class="sec">
+    <p class="eyebrow">Data</p>
+    <h2>[SECTION SUBTITLE]</h2>
+    <div class="rule"></div>
+    <p>[BODY COPY]</p>
+    <h3>[SUBHEAD]</h3>
+    <p>[BODY COPY]</p>
+  </section>
+
+  <section class="sec">
+    <p class="eyebrow">Method</p>
+    <h2>[SECTION SUBTITLE]</h2>
+    <div class="rule"></div>
+    <p>[BODY COPY]</p>
+    <h3>[SUBHEAD]</h3>
+    <p>[BODY COPY]</p>
+  </section>
+
+  <section class="sec">
+    <p class="eyebrow">Results</p>
+    <h2>[SECTION SUBTITLE]</h2>
+    <div class="rule"></div>
+    <p>[BODY COPY]</p>
+    <p>[BODY COPY]</p>
+  </section>
+
+  <section class="sec">
+    <p class="eyebrow">Limits</p>
+    <h2>[SECTION SUBTITLE]</h2>
+    <div class="rule"></div>
+    <p>[BODY COPY — WHAT THE RESULTS DO NOT SUPPORT]</p>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <a class="backlink" href="../index.html#projects"><span class="arw">&larr;</span> All projects</a>
+    <span>&copy; 2026 Steven R Wilson</span>
+  </div>
+</footer>
+
+</body>
+</html>
