@@ -1494,7 +1494,9 @@
     }
 
     if (files && navigator.share && navigator.canShare && navigator.canShare({ files: files })) {
-      navigator.share({ files: files, title: 'In_n_Out log' }).catch(function(err){
+      var now = new Date();
+      var subject = 'In_n_Out - ' + dateStr(now) + ' ' + hms(now);
+      navigator.share({ files: files, title: subject }).catch(function(err){
         if (err && err.name === 'AbortError') return;
         fallback();
       });
