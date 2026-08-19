@@ -549,6 +549,7 @@
       <button class="save" id="share">Send as file</button>
       <button class="save" id="save">Save text</button>
       <button class="save" id="savejson">Save JSON</button>
+      <button class="save" id="copysubj">Copy subject</button>
     </div>
     <div class="entry emailrow">
       <p class="eyebrow">Email to</p>
@@ -1265,6 +1266,26 @@
     }
   });
 
+  /* ---- copy subject line ---- */
+  function subjectLine(){
+    var now = new Date();
+    return 'In_n_Out - ' + dateStr(now) + ' ' + hms(now);
+  }
+
+  $('copysubj').addEventListener('click', function(){
+    var btn = this;
+    var text = subjectLine();
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function(){
+        flash(btn, 'Copied');
+      }, function(){
+        legacyCopy(text, btn);
+      });
+    } else {
+      legacyCopy(text, btn);
+    }
+  });
+
   /* ---- show text (screenshot fallback) ---- */
   $('show').addEventListener('click', function(){
     var pre = $('textout');
@@ -1284,7 +1305,7 @@
     if (!to) { $('emailto').focus(); return; }
     var now = new Date();
     var href = 'mailto:' + encodeURIComponent(to) +
-               '?subject=' + encodeURIComponent('In_n_Out - ' + dateStr(now) + ' ' + hms(now)) +
+               '?subject=' + encodeURIComponent(subjectLine()) +
                '&body=' + encodeURIComponent(logText());
     window.location.href = href;
   }
@@ -1494,9 +1515,7 @@
     }
 
     if (files && navigator.share && navigator.canShare && navigator.canShare({ files: files })) {
-      var now = new Date();
-      var subject = 'In_n_Out - ' + dateStr(now) + ' ' + hms(now);
-      navigator.share({ files: files, title: subject }).catch(function(err){
+      navigator.share({ files: files, title: subjectLine() }).catch(function(err){
         if (err && err.name === 'AbortError') return;
         fallback();
       });
