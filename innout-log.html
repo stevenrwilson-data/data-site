@@ -79,18 +79,110 @@
 
   /* ---------- mode switch ---------- */
   .modes{
-    display:grid;grid-template-columns:1fr 1fr;gap:8px;
+    display:grid;grid-template-columns:repeat(2,1fr);gap:6px;
     margin:26px 0 0;
   }
+  .srcs{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:6px;
+    margin:0 0 18px;
+  }
+  .srcs button{
+    font-family:var(--font-body);
+    font-weight:700;font-size:11px;
+    letter-spacing:.08em;text-transform:uppercase;
+    color:var(--salmon);background:transparent;
+    border:1px solid var(--rule);
+    border-radius:999px;padding:12px 2px;cursor:pointer;
+    transition:background .18s ease,color .18s ease,border-color .18s ease;
+  }
+  .srcs button[aria-pressed="true"]{
+    background:var(--sand);color:var(--field);border-color:var(--sand);
+  }
+  .zone{
+    margin-top:24px;padding-top:24px;
+    border-top:1px solid var(--rule);
+  }
+  .zone > .act{width:100%;}
+  #wrap-tables > .pad,
+  #wrap-cups > .pad{margin-top:22px;}
+  .estline{
+    font-family:var(--font-code);font-size:15px;
+    color:var(--sand);margin:14px 0 0;
+    font-variant-numeric:tabular-nums;
+  }
+  .estline .lab{
+    font-family:var(--font-body);font-weight:700;
+    font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--brick);display:block;margin-bottom:4px;
+  }
+  .estline.unset{color:var(--salmon);opacity:.6;font-size:13px;}
   .modes button{
+    font-family:var(--font-body);
+    font-weight:700;font-size:11px;
+    letter-spacing:.1em;text-transform:uppercase;
+    color:var(--salmon);background:transparent;
+    border:1px solid var(--rule);
+    border-radius:999px;padding:14px 2px;cursor:pointer;
+    transition:background .18s ease,color .18s ease,border-color .18s ease;
+  }
+
+  /* ---------- table observation ---------- */
+  .tblhead{
+    display:flex;justify-content:space-between;align-items:baseline;
+    gap:14px;margin:0 0 14px;
+  }
+  .tblhead .eyebrow{margin:0;}
+  .tblhead .which{
+    font-family:var(--font-code);font-size:13px;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--sand);
+  }
+  .tblhead .which.idle{color:var(--salmon);opacity:.6;}
+
+  .trow{
+    display:grid;grid-template-columns:1fr auto auto auto;
+    align-items:center;gap:12px;
+    background:rgba(8,65,92,.6);
+    border:1px solid var(--rule);
+    border-radius:20px;
+    padding:10px 12px 10px 20px;
+    margin-bottom:10px;
+  }
+  .trow .name{
+    font-weight:700;font-size:12px;
+    letter-spacing:.14em;text-transform:uppercase;
+    color:var(--salmon);
+  }
+  .trow .cnt{
+    font-family:var(--font-code);font-weight:600;
+    font-size:28px;line-height:1;color:var(--sand);
+    font-variant-numeric:tabular-nums;
+    min-width:1.3em;text-align:right;
+  }
+  .trow .minus{
+    width:40px;height:40px;border-radius:999px;
+    background:transparent;border:1px solid rgba(142,68,61,.9);
+    color:var(--salmon);font-size:20px;line-height:1;
+    cursor:pointer;
+  }
+  .trow .minus:disabled{opacity:.3;}
+  .trow .plus{
+    width:66px;height:66px;border-radius:999px;
+    background:var(--sand);border:none;
+    color:var(--plum);font-size:30px;line-height:1;
+    font-family:var(--font-display);cursor:pointer;
+    transition:transform .12s ease;
+  }
+  .trow .plus:active{transform:scale(.94);}
+  .tblsave{
     font-family:var(--font-body);
     font-weight:700;font-size:12px;
     letter-spacing:.16em;text-transform:uppercase;
-    color:var(--salmon);background:transparent;
-    border:1px solid var(--rule);
-    border-radius:999px;padding:14px 0;cursor:pointer;
-    transition:background .18s ease,color .18s ease,border-color .18s ease;
+    color:var(--field);background:var(--sand);
+    border:none;border-radius:999px;
+    padding:15px 26px;cursor:pointer;
+    justify-self:start;
   }
+  .tblsave:disabled{opacity:.35;cursor:default;}
   .modes button[aria-pressed="true"]{
     background:var(--sand);color:var(--field);border-color:var(--sand);
   }
@@ -239,6 +331,8 @@
   ol.log li.k-hold .ev{color:#E58C7F;}
   ol.log li.k-up .ev{color:var(--plate);}
   ol.log li.k-order .ev{color:var(--sand);}
+  ol.log li.k-table .ev{color:var(--plate);}
+  ol.log li.k-cups .ev{color:#9FD3C0;}
   ol.log li.repeat .ev{color:#E58C7F;}
   ol.log li.repeat .md{color:var(--brick);}
   .warn{
@@ -272,6 +366,8 @@
   <div class="modes" role="group" aria-label="Mode">
     <button id="m-cars" aria-pressed="true">Drive-thru</button>
     <button id="m-counter" aria-pressed="false">Counter</button>
+    <button id="m-tables" aria-pressed="false">Tables</button>
+    <button id="m-cups" aria-pressed="false">Cups</button>
   </div>
 
   <!-- CARS -->
@@ -291,6 +387,26 @@
       <button class="act car" id="cars-car">Car<span class="sub">Next number + time</span></button>
       <button class="act hold" id="cars-hold">Not moving up<span class="sub">Held at payment</span></button>
       <button class="act up" id="cars-up">Up<span class="sub">Moved to pickup</span></button>
+    </div>
+
+    <div class="zone">
+      <div class="tblhead">
+        <p class="eyebrow">Containers for next car</p>
+        <span class="which idle" id="bag-which">None counted</span>
+      </div>
+
+      <div class="trow">
+        <span class="name">Bags</span>
+        <span class="cnt" id="c-bags">0</span>
+        <button class="minus" id="m-bags" aria-label="One fewer bag">&minus;</button>
+        <button class="plus" id="p-bags" aria-label="One more bag">+</button>
+      </div>
+      <div class="trow">
+        <span class="name">Boxes</span>
+        <span class="cnt" id="c-boxes">0</span>
+        <button class="minus" id="m-boxes" aria-label="One fewer box">&minus;</button>
+        <button class="plus" id="p-boxes" aria-label="One more box">+</button>
+      </div>
     </div>
   </div>
 
@@ -321,6 +437,101 @@
     </div>
   </div>
 
+  <!-- TABLES -->
+  <div id="wrap-tables" hidden>
+    <div class="pad">
+      <button class="act timer" id="tbl-timer">Start table timer</button>
+      <button class="act up" id="tbl-new">New table<span class="sub">Saves the one before it</span></button>
+
+      <div class="zone">
+        <div class="tblhead">
+          <p class="eyebrow">Table observation</p>
+          <span class="which idle" id="tbl-which">No table open</span>
+        </div>
+
+        <div class="trow">
+          <span class="name">Burgers</span>
+          <span class="cnt" id="c-burgers">0</span>
+          <button class="minus" id="m-burgers" aria-label="One fewer burger">&minus;</button>
+          <button class="plus" id="p-burgers" aria-label="One more burger">+</button>
+        </div>
+        <div class="trow">
+          <span class="name">Fries</span>
+          <span class="cnt" id="c-fries">0</span>
+          <button class="minus" id="m-fries" aria-label="One fewer fries">&minus;</button>
+          <button class="plus" id="p-fries" aria-label="One more fries">+</button>
+        </div>
+        <div class="trow">
+          <span class="name">Animal fries</span>
+          <span class="cnt" id="c-animal">0</span>
+          <button class="minus" id="m-animal" aria-label="One fewer animal fries">&minus;</button>
+          <button class="plus" id="p-animal" aria-label="One more animal fries">+</button>
+        </div>
+        <div class="trow">
+          <span class="name">Drinks</span>
+          <span class="cnt" id="c-drinks">0</span>
+          <button class="minus" id="m-drinks" aria-label="One fewer drink">&minus;</button>
+          <button class="plus" id="p-drinks" aria-label="One more drink">+</button>
+        </div>
+
+        <p class="estline" id="tbl-est">&mdash;</p>
+
+        <button class="tblsave" id="tbl-save">Save table</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CUPS -->
+  <div id="wrap-cups" hidden>
+    <div class="pad">
+      <div>
+        <div class="tblhead">
+          <p class="eyebrow">Cup size sample</p>
+          <span class="which idle" id="cup-n">0 in sample</span>
+        </div>
+
+        <div class="srcs" role="group" aria-label="Cup source">
+          <button id="src-fountain" aria-pressed="false">Fountain</button>
+          <button id="src-tables" aria-pressed="true">Tables</button>
+          <button id="src-drive" aria-pressed="false">Drive-thru</button>
+        </div>
+
+        <div class="trow">
+          <span class="name">Small</span>
+          <span class="cnt" id="c-sm">0</span>
+          <button class="minus" id="m-sm" aria-label="One fewer small">&minus;</button>
+          <button class="plus" id="p-sm" aria-label="One more small">+</button>
+        </div>
+        <div class="trow">
+          <span class="name">Medium</span>
+          <span class="cnt" id="c-md">0</span>
+          <button class="minus" id="m-md" aria-label="One fewer medium">&minus;</button>
+          <button class="plus" id="p-md" aria-label="One more medium">+</button>
+        </div>
+        <div class="trow">
+          <span class="name">Large</span>
+          <span class="cnt" id="c-lg">0</span>
+          <button class="minus" id="m-lg" aria-label="One fewer large">&minus;</button>
+          <button class="plus" id="p-lg" aria-label="One more large">+</button>
+        </div>
+        <div class="trow">
+          <span class="name">X-large</span>
+          <span class="cnt" id="c-xl">0</span>
+          <button class="minus" id="m-xl" aria-label="One fewer x-large">&minus;</button>
+          <button class="plus" id="p-xl" aria-label="One more x-large">+</button>
+        </div>
+
+        <p class="estline" id="cup-dist">&mdash;</p>
+
+        <button class="tblsave" id="cup-save">Save sample</button>
+      </div>
+
+      <div class="zone">
+        <button class="act timer" id="cup-timer">Start cup timer</button>
+      </div>
+    </div>
+  </div>
+
   <div class="entry">
     <p class="eyebrow">Note</p>
     <div class="row">
@@ -336,7 +547,8 @@
       <button class="save" id="copy">Copy log</button>
       <button class="save" id="show">Show text</button>
       <button class="save" id="share">Send as file</button>
-      <button class="save" id="save">Save log file</button>
+      <button class="save" id="save">Save text</button>
+      <button class="save" id="savejson">Save JSON</button>
     </div>
     <div class="entry emailrow">
       <p class="eyebrow">Email to</p>
@@ -356,6 +568,23 @@
 
 <script>
 (function(){
+  /* ------------------------------------------------------------------
+     PRICES — set these from the menu board at your store, then reload.
+     Leave a value at 0 and it is treated as unknown; the table estimate
+     shows "prices not set" instead of a wrong number.
+     Fries and animal fries are single known prices.
+     Burgers and drinks are ranges, so the estimate comes out as a span
+     from the cheapest possible basket to the most expensive.
+     ------------------------------------------------------------------ */
+  var PRICES = {
+    fries:       0.00,   // one order of fries
+    animal:      0.00,   // one order of animal style fries
+    burgerLow:   0.00,   // cheapest burger on the board
+    burgerHigh:  0.00,   // priciest burger on the board
+    drinkLow:    0.00,   // small drink
+    drinkHigh:   0.00    // largest drink, or a shake if you count those
+  };
+
   /* entry: {at:Date, time:'HH:MM:SS', mode:'drive-thru'|'counter', kind, text, n} */
   var entries = [];
   var carNum  = 0;
@@ -363,6 +592,7 @@
   var startAt = null;   // Date of the running timer, null when none
   var runMode = null;   // which mode the running timer belongs to
   var endAt   = null;   // Date the last run ended, null while running
+  var runId   = 0;      // 0 = before any run; increments on each timer start
 
   var $ = function(id){ return document.getElementById(id); };
 
@@ -379,7 +609,28 @@
     if (sec >= 3600) return dur(sec);
     return Math.floor(sec / 60) + ':' + pad(sec % 60);
   }
-  function label(m){ return m === 'counter' ? 'COUNTER' : 'DRIVE-THRU'; }
+  var MODE_KEY = { 'drive-thru':'drive_thru', 'counter':'counter', 'tables':'tables', 'cups':'cups' };
+  var KIND_KEY = {
+    timer:'timer_start', timerend:'timer_end', car:'car',
+    hold:'not_moving_up', up:'moved_up', order:'order',
+    note:'note', table:'table', cups:'cup_sample'
+  };
+  function modeKey(m){ return MODE_KEY[m] || m; }
+
+  function iso(d){
+    var off = -d.getTimezoneOffset();
+    var sign = off >= 0 ? '+' : '-';
+    var a = Math.abs(off);
+    return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+           'T' + hms(d) + sign + pad(Math.floor(a / 60)) + ':' + pad(a % 60);
+  }
+
+  function label(m){
+    if (m === 'counter') return 'COUNTER';
+    if (m === 'tables')  return 'TABLES';
+    if (m === 'cups')    return 'CUPS';
+    return 'DRIVE-THRU';
+  }
 
   /* ---- clock ---- */
   function tick(){
@@ -406,7 +657,9 @@
       at: now, time: hms(now), mode: mode,
       kind: kind, text: text, n: n || 0,
       nums: (extra && extra.nums) || [],
-      repeat: !!(extra && extra.repeat)
+      repeat: !!(extra && extra.repeat),
+      run: runId,
+      data: (extra && extra.data) || {}
     };
     entries.push(e);
     render();
@@ -477,12 +730,18 @@
     var running = !!startAt;
     $('cars-timer').textContent = running ? 'End timer' : 'Start drive-thru timer';
     $('ctr-timer').textContent  = running ? 'End timer' : 'Start counter timer';
+    $('tbl-timer').textContent  = running ? 'End timer' : 'Start table timer';
+    $('cup-timer').textContent  = running ? 'End timer' : 'Start cup timer';
     $('cars-timer').classList.toggle('running', running);
     $('ctr-timer').classList.toggle('running', running);
+    $('tbl-timer').classList.toggle('running', running);
+    $('cup-timer').classList.toggle('running', running);
   }
 
   function toggleTimer(){
     if (startAt) {
+      saveTable();          /* don't lose a table that is still open */
+      saveCups();           /* or a cup sample that hasn't been banked */
       var now = new Date();
       var secs = (now - startAt) / 1000;
       var was = runMode;
@@ -490,23 +749,64 @@
       startAt = null;
       runMode = null;
       $('elapsed').textContent = label(was) + ' ended ' + dur(secs);
-      add('timerend', 'TIMER ENDED — ' + label(was) + ' — RUN ' + dur(secs));
+      add('timerend', 'TIMER ENDED — ' + label(was) + ' — RUN ' + dur(secs),
+          0, { data: { duration_sec: Math.round(secs), run_mode: modeKey(was) } });
     } else {
       startAt = new Date();
       runMode = mode;
       endAt = null;
-      add('timer', 'TIMER STARTED — ' + label(mode));
+      runId++;
+      add('timer', 'TIMER STARTED — ' + label(mode),
+          0, { data: { run_mode: modeKey(mode) } });
     }
     timerFace();
     tick();
   }
   $('cars-timer').addEventListener('click', toggleTimer);
   $('ctr-timer').addEventListener('click', toggleTimer);
+  $('tbl-timer').addEventListener('click', toggleTimer);
+  $('cup-timer').addEventListener('click', toggleTimer);
 
   /* ---- drive-thru ---- */
+  var carry = { bags: 0, boxes: 0 };
+
+  function carryFace(){
+    $('c-bags').textContent  = carry.bags;
+    $('c-boxes').textContent = carry.boxes;
+    $('m-bags').disabled  = carry.bags  === 0;
+    $('m-boxes').disabled = carry.boxes === 0;
+    var w = $('bag-which');
+    if (carry.bags || carry.boxes) {
+      w.textContent = carry.bags + ' bag' + (carry.bags === 1 ? '' : 's') +
+                      ', ' + carry.boxes + ' box' + (carry.boxes === 1 ? '' : 'es');
+      w.className = 'which';
+    } else {
+      w.textContent = 'None counted';
+      w.className = 'which idle';
+    }
+  }
+
+  function carryBump(key, by){
+    carry[key] = Math.max(0, carry[key] + by);
+    carryFace();
+  }
+  $('p-bags').addEventListener('click',  function(){ carryBump('bags',   1); });
+  $('m-bags').addEventListener('click',  function(){ carryBump('bags',  -1); });
+  $('p-boxes').addEventListener('click', function(){ carryBump('boxes',  1); });
+  $('m-boxes').addEventListener('click', function(){ carryBump('boxes', -1); });
+
   $('cars-car').addEventListener('click', function(){
     carNum++;
-    add('car', 'CAR ' + carNum);
+    var line = 'CAR ' + carNum;
+    if (carry.bags || carry.boxes) {
+      line += ' — BAGS ' + carry.bags + ' BOXES ' + carry.boxes;
+    }
+    add('car', line, 0, { data: {
+      car_number: carNum, bags: carry.bags, boxes: carry.boxes
+    }});
+    carry.bags = 0;
+    carry.boxes = 0;
+    carryFace();
   });
   $('cars-hold').addEventListener('click', function(){
     add('hold', 'NOT MOVING UP');
@@ -532,11 +832,17 @@
   function submitOrders(){
     var raw = $('orders').value.trim();
     if (!raw) return;
-    var tokens = raw.split(/[,\s]+/).filter(Boolean);
+    var tokens = raw.match(/\d+|[xX]/g) || [];
     var nums = [], xs = 0;
     for (var i = 0; i < tokens.length; i++) {
       if (/^x$/i.test(tokens[i])) { xs++; }
       else { nums.push(tokens[i]); }
+    }
+
+    if (!nums.length && !xs) {
+      $('dupwarn').textContent = 'No order numbers found in "' + raw + '"';
+      $('dupwarn').hidden = false;
+      return;
     }
 
     var seen = seenNumbers();
@@ -566,13 +872,20 @@
     var flag = { nums: nums, repeat: dupes.length > 0 };
     var keep = nums.length - dupes.length;
 
+    flag.data = {
+      numbers: nums, repeats: dupes, counted: keep,
+      simultaneous: nums.length > 1, unannounced: false
+    };
     if (nums.length === 1) {
       add('order', 'ORDER ' + nums[0] + tag, keep, flag);
     } else if (nums.length > 1) {
       add('order', 'ORDERS ' + nums.join(', ') + ' (simultaneous)' + tag, keep, flag);
     }
     for (var j = 0; j < xs; j++) {
-      add('order', 'X (no announced order)', 1);
+      add('order', 'X (no announced order)', 1, { data: {
+        numbers: [], repeats: [], counted: 1,
+        simultaneous: false, unannounced: true
+      }});
     }
     $('orders').value = '';
     $('orders').focus();
@@ -594,12 +907,227 @@
     if (ev.key === 'Enter') { ev.preventDefault(); submitNote(); }
   });
 
+  /* ---- table observation ---- */
+  var CATS = [
+    { key: 'burgers', id: 'burgers', tag: 'B' },
+    { key: 'fries',   id: 'fries',   tag: 'F' },
+    { key: 'animal',  id: 'animal',  tag: 'A' },
+    { key: 'drinks',  id: 'drinks',  tag: 'D' }
+  ];
+  var tblNum  = 0;
+  var tblOpen = false;
+  var counts  = { burgers: 0, fries: 0, animal: 0, drinks: 0 };
+
+  function tblTotal(){
+    var t = 0;
+    for (var i = 0; i < CATS.length; i++) t += counts[CATS[i].key];
+    return t;
+  }
+
+  function money(n){ return '$' + n.toFixed(2); }
+
+  function pricesSet(){
+    return PRICES.fries > 0 && PRICES.animal > 0 &&
+           PRICES.burgerLow > 0 && PRICES.burgerHigh > 0 &&
+           PRICES.drinkLow > 0 && PRICES.drinkHigh > 0;
+  }
+
+  /* Cheapest and priciest this basket could be, given the price ranges. */
+  function tblEstimate(){
+    if (!pricesSet()) return null;
+    var fixed = counts.fries * PRICES.fries + counts.animal * PRICES.animal;
+    return {
+      low:  fixed + counts.burgers * PRICES.burgerLow  + counts.drinks * PRICES.drinkLow,
+      high: fixed + counts.burgers * PRICES.burgerHigh + counts.drinks * PRICES.drinkHigh
+    };
+  }
+
+  function estText(){
+    var e = tblEstimate();
+    if (!e) return null;
+    return e.low === e.high ? money(e.low) : money(e.low) + '–' + money(e.high);
+  }
+
+  function tblFace(){
+    for (var i = 0; i < CATS.length; i++) {
+      var c = CATS[i];
+      $('c-' + c.id).textContent = counts[c.key];
+      $('m-' + c.id).disabled = counts[c.key] === 0;
+    }
+    var w = $('tbl-which');
+    if (tblOpen) {
+      w.textContent = 'Table ' + tblNum + ' open';
+      w.className = 'which';
+    } else {
+      w.textContent = tblNum ? tblNum + ' logged' : 'No table open';
+      w.className = 'which idle';
+    }
+    $('tbl-save').disabled = tblTotal() === 0;
+
+    var est = $('tbl-est');
+    if (!pricesSet()) {
+      est.innerHTML = 'Prices not set — edit the PRICES block at the top of this file.';
+      est.className = 'estline unset';
+    } else if (tblTotal() === 0) {
+      est.innerHTML = '<span class="lab">Estimated cost</span>&mdash;';
+      est.className = 'estline';
+    } else {
+      est.innerHTML = '<span class="lab">Estimated cost</span>' + estText();
+      est.className = 'estline';
+    }
+  }
+
+  function clearTable(){
+    for (var i = 0; i < CATS.length; i++) counts[CATS[i].key] = 0;
+    tblOpen = false;
+    tblFace();
+  }
+
+  /* Commit the open table, if it has anything on it. */
+  function saveTable(){
+    if (!tblOpen || tblTotal() === 0) { clearTable(); return false; }
+    var parts = [];
+    for (var i = 0; i < CATS.length; i++) {
+      parts.push(CATS[i].tag + ':' + counts[CATS[i].key]);
+    }
+    var line = 'TABLE ' + tblNum + ' — ' + parts.join(' ') + ' — ITEMS ' + tblTotal();
+    var est = estText();
+    if (est) line += ' — EST ' + est;
+    var e = tblEstimate();
+    add('table', line, 0, { data: {
+      table_number: tblNum,
+      burgers: counts.burgers, fries: counts.fries,
+      animal_fries: counts.animal, drinks: counts.drinks,
+      items: tblTotal(),
+      est_low:  e ? Number(e.low.toFixed(2))  : null,
+      est_high: e ? Number(e.high.toFixed(2)) : null
+    }});
+    clearTable();
+    return true;
+  }
+
+  function openTable(){
+    tblNum++;
+    tblOpen = true;
+    tblFace();
+  }
+
+  function bump(key, by){
+    if (!tblOpen) openTable();          /* first tap opens a table on its own */
+    counts[key] = Math.max(0, counts[key] + by);
+    tblFace();
+  }
+
+  for (var ci = 0; ci < CATS.length; ci++) {
+    (function(c){
+      $('p-' + c.id).addEventListener('click', function(){ bump(c.key,  1); });
+      $('m-' + c.id).addEventListener('click', function(){ bump(c.key, -1); });
+    })(CATS[ci]);
+  }
+
+  $('tbl-save').addEventListener('click', function(){ saveTable(); });
+  $('tbl-new').addEventListener('click', function(){
+    saveTable();
+    openTable();
+  });
+
+  /* ---- cup size sample ---- */
+  var SIZES = [
+    { key: 'sm', tag: 'S'  },
+    { key: 'md', tag: 'M'  },
+    { key: 'lg', tag: 'L'  },
+    { key: 'xl', tag: 'XL' }
+  ];
+  var cups = { sm: 0, md: 0, lg: 0, xl: 0 };
+  var cupSrc = 'tables';
+  var SRC_LABEL = { fountain: 'FOUNTAIN', tables: 'TABLES', drive: 'DRIVE-THRU' };
+
+  function cupTotal(){
+    var t = 0;
+    for (var i = 0; i < SIZES.length; i++) t += cups[SIZES[i].key];
+    return t;
+  }
+
+  function cupFace(){
+    var n = cupTotal();
+    for (var i = 0; i < SIZES.length; i++) {
+      var z = SIZES[i];
+      $('c-' + z.key).textContent = cups[z.key];
+      $('m-' + z.key).disabled = cups[z.key] === 0;
+    }
+    $('cup-n').textContent = n + ' in ' + SRC_LABEL[cupSrc].toLowerCase() + ' sample';
+    $('cup-n').className = n ? 'which' : 'which idle';
+    $('cup-save').disabled = n === 0;
+
+    var d = $('cup-dist');
+    if (!n) {
+      d.innerHTML = '<span class="lab">Distribution</span>&mdash;';
+    } else {
+      var bits = [];
+      for (var j = 0; j < SIZES.length; j++) {
+        var v = cups[SIZES[j].key];
+        bits.push(SIZES[j].tag + ' ' + Math.round(v / n * 100) + '%');
+      }
+      d.innerHTML = '<span class="lab">Distribution of ' + n + '</span>' + bits.join('   ');
+    }
+  }
+
+  function clearCups(){
+    for (var i = 0; i < SIZES.length; i++) cups[SIZES[i].key] = 0;
+    cupFace();
+  }
+
+  function saveCups(){
+    var n = cupTotal();
+    if (n === 0) return false;
+    var parts = [];
+    for (var i = 0; i < SIZES.length; i++) {
+      parts.push(SIZES[i].tag + ':' + cups[SIZES[i].key]);
+    }
+    add('cups', 'CUPS (' + SRC_LABEL[cupSrc] + ') — ' + parts.join(' ') + ' — N ' + n,
+        0, { data: {
+          source: cupSrc, small: cups.sm, medium: cups.md,
+          large: cups.lg, xlarge: cups.xl, n: n
+        }});
+    clearCups();
+    return true;
+  }
+
+  function cupBump(key, by){
+    cups[key] = Math.max(0, cups[key] + by);
+    cupFace();
+  }
+
+  for (var zi = 0; zi < SIZES.length; zi++) {
+    (function(z){
+      $('p-' + z.key).addEventListener('click', function(){ cupBump(z.key,  1); });
+      $('m-' + z.key).addEventListener('click', function(){ cupBump(z.key, -1); });
+    })(SIZES[zi]);
+  }
+  $('cup-save').addEventListener('click', function(){ saveCups(); });
+
+  /* Changing source banks whatever is already counted, so a sample is
+     never split across two sources. */
+  function setCupSrc(src){
+    if (src === cupSrc) return;
+    saveCups();
+    cupSrc = src;
+    $('src-fountain').setAttribute('aria-pressed', src === 'fountain' ? 'true' : 'false');
+    $('src-tables').setAttribute('aria-pressed',   src === 'tables'   ? 'true' : 'false');
+    $('src-drive').setAttribute('aria-pressed',    src === 'drive'    ? 'true' : 'false');
+    cupFace();
+  }
+  $('src-fountain').addEventListener('click', function(){ setCupSrc('fountain'); });
+  $('src-tables').addEventListener('click', function(){ setCupSrc('tables'); });
+  $('src-drive').addEventListener('click', function(){ setCupSrc('drive'); });
+
   /* ---- undo ---- */
   $('undo').addEventListener('click', function(){
     if (!entries.length) return;
     var e = entries.pop();
     if (e.kind === 'car' && carNum > 0) carNum--;
-    if (e.kind === 'timer') { startAt = null; runMode = null; }
+    if (e.kind === 'table' && tblNum > 0) { tblNum--; clearTable(); }
+    if (e.kind === 'timer') { startAt = null; runMode = null; if (runId > 0) runId--; }
     if (e.kind === 'timerend') {
       /* put the run back the way it was */
       for (var i = entries.length - 1; i >= 0; i--) {
@@ -619,14 +1147,19 @@
   /* ---- mode switch ---- */
   function setMode(m){
     mode = m;
-    var cars = m === 'drive-thru';
-    $('m-cars').setAttribute('aria-pressed', cars ? 'true' : 'false');
-    $('m-counter').setAttribute('aria-pressed', cars ? 'false' : 'true');
-    $('wrap-cars').hidden = !cars;
-    $('wrap-counter').hidden = cars;
+    $('m-cars').setAttribute('aria-pressed',    m === 'drive-thru' ? 'true' : 'false');
+    $('m-counter').setAttribute('aria-pressed', m === 'counter'    ? 'true' : 'false');
+    $('m-tables').setAttribute('aria-pressed',  m === 'tables'     ? 'true' : 'false');
+    $('m-cups').setAttribute('aria-pressed',    m === 'cups'       ? 'true' : 'false');
+    $('wrap-cars').hidden    = m !== 'drive-thru';
+    $('wrap-counter').hidden = m !== 'counter';
+    $('wrap-tables').hidden  = m !== 'tables';
+    $('wrap-cups').hidden    = m !== 'cups';
   }
   $('m-cars').addEventListener('click', function(){ setMode('drive-thru'); });
   $('m-counter').addEventListener('click', function(){ setMode('counter'); });
+  $('m-tables').addEventListener('click', function(){ setMode('tables'); });
+  $('m-cups').addEventListener('click', function(){ setMode('cups'); });
 
   /* ---- log text ---- */
   function logText(){
@@ -635,15 +1168,55 @@
     var lines = [];
     lines.push('QUEUE LOG');
     lines.push('Source: data gathered manually in-store with the Queue Log web app.');
+    lines.push('Location: a Southern California In-N-Out location, not named by choice.');
     lines.push('Date: ' + dateStr(now));
     lines.push('Saved: ' + hms(now));
     lines.push('Entries: ' + entries.length);
     lines.push('');
-    lines.push('CURRENT RUN');
-    lines.push('  Cars: ' + s.cars + (s.carAvg === null ? '' : '   Avg between cars: ' + short(s.carAvg)));
-    lines.push('  Orders: ' + s.orders + (s.orderAvg === null ? '' : '   Avg between orders: ' + short(s.orderAvg)));
-    lines.push('  Averages = mean interval between consecutive logged events in this run.');
-    lines.push('');
+    var v = visitSummary();
+    if (v) {
+      lines.push('VISIT');
+      lines.push('  Pattern: ' + v.pattern + '   (' + v.runs + ' run' + (v.runs === 1 ? '' : 's') + ')');
+      lines.push('  Span: ' + v.start.slice(11, 19) + '-' + v.end.slice(11, 19) + '   ' + dur(v.span_sec));
+      for (var m in v.channels) {
+        if (!v.channels.hasOwnProperty(m)) continue;
+        var k = v.channels[m];
+        var b = [];
+        if (k.cars)           b.push(k.cars + ' cars' + (k.car_interval_sec ? ' @ ' + short(k.car_interval_sec) : ''));
+        if (k.orders_counted) b.push(k.orders_counted + ' orders' + (k.order_interval_sec ? ' @ ' + short(k.order_interval_sec) : ''));
+        if (k.orders_repeat)  b.push(k.orders_repeat + ' repeats excluded');
+        if (k.tables)         b.push(k.tables + ' tables');
+        if (k.cup_samples)    b.push(k.cup_samples + ' cup samples');
+        if (k.notes)          b.push(k.notes + ' notes');
+        lines.push('  ' + m + ': ' + k.runs + ' run' + (k.runs === 1 ? '' : 's') +
+                   ', ' + dur(k.timed_sec) + ' timed' + (b.length ? ',  ' + b.join(',  ') : ''));
+      }
+      lines.push('  Channel intervals pool that channel\'s runs; time in the other channel is excluded.');
+      lines.push('');
+    }
+
+    var rs = runsSummary();
+    if (rs.length) {
+      lines.push('RUNS');
+      for (var r = 0; r < rs.length; r++) {
+        var u = rs[r];
+        var head = '  Run ' + u.run_id + '  ' + u.run_mode +
+                   '  ' + u.start.slice(11, 19) +
+                   (u.end ? '-' + u.end.slice(11, 19) : '-open') +
+                   '  ' + dur(u.duration_sec || 0);
+        lines.push(head);
+        var bits = [];
+        if (u.cars)           bits.push('cars ' + u.cars + (u.car_interval_sec ? ' @ ' + short(u.car_interval_sec) : ''));
+        if (u.orders_counted) bits.push('orders ' + u.orders_counted + (u.order_interval_sec ? ' @ ' + short(u.order_interval_sec) : ''));
+        if (u.orders_repeat)  bits.push('repeats excluded ' + u.orders_repeat);
+        if (u.tables)         bits.push('tables ' + u.tables);
+        if (u.cup_samples)    bits.push('cup samples ' + u.cup_samples);
+        if (u.notes)          bits.push('notes ' + u.notes);
+        if (bits.length) lines.push('        ' + bits.join(',  '));
+      }
+      lines.push('  Intervals = mean gap between consecutive logged events in that run.');
+      lines.push('');
+    }
     lines.push('TIME      MODE        EVENT');
     lines.push('------------------------------------------------------------');
     for (var i = 0; i < entries.length; i++) {
@@ -709,8 +1282,9 @@
   function createEmail(){
     var to = $('emailto').value.trim();
     if (!to) { $('emailto').focus(); return; }
+    var now = new Date();
     var href = 'mailto:' + encodeURIComponent(to) +
-               '?subject=' + encodeURIComponent('Queue Log ' + dateStr(new Date())) +
+               '?subject=' + encodeURIComponent('In_n_Out - ' + dateStr(now) + ' ' + hms(now)) +
                '&body=' + encodeURIComponent(logText());
     window.location.href = href;
   }
@@ -719,8 +1293,168 @@
     if (ev.key === 'Enter') { ev.preventDefault(); createEmail(); }
   });
 
+
+  /* ---- machine-readable export ----
+     Snake_case keys and values throughout so pandas.json_normalize
+     gives usable column names with no cleanup. */
+  function runsSummary(){
+    var runs = [], cur = null;
+    for (var i = 0; i < entries.length; i++) {
+      var e = entries[i];
+      if (e.kind === 'timer') {
+        cur = {
+          run_id: e.run, run_mode: e.data.run_mode || modeKey(e.mode),
+          start: iso(e.at), end: null, duration_sec: null,
+          cars: 0, orders_counted: 0, orders_repeat: 0,
+          tables: 0, cup_samples: 0, notes: 0, events: 0,
+          car_interval_sec: null, order_interval_sec: null,
+          car_span_sec: null, order_span_sec: null,
+          _startedAt: e.at, _fc: null, _lc: null, _fo: null, _lo: null
+        };
+        runs.push(cur);
+      } else if (cur && e.run === cur.run_id) {
+        cur.events++;
+        if (e.kind === 'car') {
+          cur.cars++;
+          if (!cur._fc) cur._fc = e.at;
+          cur._lc = e.at;
+        }
+        if (e.kind === 'order') {
+          if (e.repeat) cur.orders_repeat++;
+          if (e.n > 0) {
+            cur.orders_counted += e.n;
+            if (!cur._fo) cur._fo = e.at;
+            cur._lo = e.at;
+          }
+        }
+        if (e.kind === 'table') cur.tables++;
+        if (e.kind === 'cups')  cur.cup_samples++;
+        if (e.kind === 'note')  cur.notes++;
+        if (e.kind === 'timerend') {
+          cur.end = iso(e.at);
+          cur.duration_sec = e.data.duration_sec;
+        }
+      }
+    }
+    /* mean gap between consecutive events, same definition the panels use */
+    for (var r = 0; r < runs.length; r++) {
+      var u = runs[r];
+      if (u.cars > 1) {
+        u.car_span_sec = Math.round((u._lc - u._fc) / 1000);
+        u.car_interval_sec = Math.round(u.car_span_sec / (u.cars - 1));
+      }
+      if (u.orders_counted > 1) {
+        u.order_span_sec = Math.round((u._lo - u._fo) / 1000);
+        u.order_interval_sec = Math.round(u.order_span_sec / (u.orders_counted - 1));
+      }
+      if (u.duration_sec === null && startAt && u.run_id === runId) {
+        u.duration_sec = Math.round((new Date() - u._startedAt) / 1000);
+        u.open = true;
+      }
+      delete u._startedAt; delete u._fc; delete u._lc; delete u._fo; delete u._lo;
+    }
+    return runs;
+  }
+
+
+  /* ---- visit summary ----
+     One page session = one visit, so an out-in-out trip is a single visit
+     made of three runs. Channel intervals are pooled across that channel's
+     runs: total within-run span over total within-run gaps, so the time
+     spent in the other channel never lands in the average. */
+  var PATTERN_WORD = { drive_thru:'out', counter:'in', tables:'tables', cups:'cups' };
+
+  function visitSummary(){
+    var rs = runsSummary();
+    if (!rs.length) return null;
+
+    var ch = {}, modes = [];
+    for (var i = 0; i < rs.length; i++) {
+      var u = rs[i];
+      modes.push(u.run_mode);
+      var c = ch[u.run_mode] || (ch[u.run_mode] = {
+        runs: 0, timed_sec: 0, cars: 0, orders_counted: 0, orders_repeat: 0,
+        tables: 0, cup_samples: 0, notes: 0,
+        car_interval_sec: null, order_interval_sec: null,
+        _cspan: 0, _cgaps: 0, _ospan: 0, _ogaps: 0
+      });
+      c.runs++;
+      c.timed_sec      += u.duration_sec || 0;
+      c.cars           += u.cars;
+      c.orders_counted += u.orders_counted;
+      c.orders_repeat  += u.orders_repeat;
+      c.tables         += u.tables;
+      c.cup_samples    += u.cup_samples;
+      c.notes          += u.notes;
+      if (u.cars > 1)           { c._cspan += u.car_span_sec;   c._cgaps += u.cars - 1; }
+      if (u.orders_counted > 1) { c._ospan += u.order_span_sec; c._ogaps += u.orders_counted - 1; }
+    }
+    for (var m in ch) {
+      if (!ch.hasOwnProperty(m)) continue;
+      var k = ch[m];
+      if (k._cgaps) k.car_interval_sec   = Math.round(k._cspan / k._cgaps);
+      if (k._ogaps) k.order_interval_sec = Math.round(k._ospan / k._ogaps);
+      delete k._cspan; delete k._cgaps; delete k._ospan; delete k._ogaps;
+    }
+
+    var words = [];
+    for (var w = 0; w < modes.length; w++) words.push(PATTERN_WORD[modes[w]] || modes[w]);
+
+    var first = entries.length ? entries[0].at : null;
+    var last  = entries.length ? entries[entries.length - 1].at : null;
+
+    return {
+      pattern: words.join('-'),
+      run_modes: modes,
+      runs: rs.length,
+      start: first ? iso(first) : null,
+      end: last ? iso(last) : null,
+      span_sec: (first && last) ? Math.round((last - first) / 1000) : null,
+      channels: ch
+    };
+  }
+
+  function jsonText(){
+    var now = new Date();
+    var evs = [];
+    for (var i = 0; i < entries.length; i++) {
+      var e = entries[i];
+      var row = {
+        seq: i + 1,
+        run_id: e.run,
+        timestamp: iso(e.at),
+        date: dateStr(e.at),
+        time: e.time,
+        mode: modeKey(e.mode),
+        kind: KIND_KEY[e.kind] || e.kind,
+        text: e.text
+      };
+      for (var k in e.data) { if (e.data.hasOwnProperty(k)) row[k] = e.data[k]; }
+      if (e.kind === 'order') row.is_repeat = e.repeat;
+      evs.push(row);
+    }
+    return JSON.stringify({
+      schema: 'queue_log/1',
+      source: 'data gathered manually in-store with the Queue Log web app',
+      location: 'a Southern California In-N-Out location, not named by choice',
+      exported_at: iso(now),
+      date: dateStr(now),
+      utc_offset_minutes: -now.getTimezoneOffset(),
+      prices_set: pricesSet(),
+      prices: PRICES,
+      event_count: entries.length,
+      visit: visitSummary(),
+      runs: runsSummary(),
+      events: evs
+    }, null, 2);
+  }
+
   /* ---- file name + download ---- */
-  function fileName(){ return 'innout-log-' + dateStr(new Date()) + '.txt'; }
+  function stamp(){
+    var now = new Date();
+    return dateStr(now) + '_' + hms(now).replace(/:/g, '');
+  }
+  function fileName(ext){ return 'In_n_Out_log_' + stamp() + '.' + ext; }
 
   function downloadFile(text, name){
     var blob = new Blob([text], { type: 'text/plain' });
@@ -734,30 +1468,45 @@
   }
 
   $('save').addEventListener('click', function(){
-    downloadFile(logText(), fileName());
+    downloadFile(logText(), fileName('txt'));
+  });
+  $('savejson').addEventListener('click', function(){
+    downloadFile(jsonText(), fileName('json'));
   });
 
   /* ---- send as file (share sheet) ---- */
   $('share').addEventListener('click', function(){
     var btn = this;
-    var text = logText();
-    var name = fileName();
-    var file = null;
-    try { file = new File([text], name, { type: 'text/plain' }); } catch (err) { file = null; }
+    var txt = logText(), jsn = jsonText();
+    var tname = fileName('txt'), jname = fileName('json');
+    var files = null;
+    try {
+      files = [
+        new File([txt], tname, { type: 'text/plain' }),
+        new File([jsn], jname, { type: 'application/json' })
+      ];
+    } catch (err) { files = null; }
 
-    if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file], title: 'Queue Log' }).catch(function(err){
+    function fallback(){
+      downloadFile(txt, tname);
+      downloadFile(jsn, jname);
+      flash(btn, 'Saved instead');
+    }
+
+    if (files && navigator.share && navigator.canShare && navigator.canShare({ files: files })) {
+      navigator.share({ files: files, title: 'In_n_Out log' }).catch(function(err){
         if (err && err.name === 'AbortError') return;
-        downloadFile(text, name);
-        flash(btn, 'Saved instead');
+        fallback();
       });
     } else {
-      downloadFile(text, name);
-      flash(btn, 'Saved instead');
+      fallback();
     }
   });
 
   timerFace();
+  tblFace();
+  cupFace();
+  carryFace();
   tick();
   render();
 })();
