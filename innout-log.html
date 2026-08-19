@@ -545,6 +545,7 @@
     <div class="logactions">
       <button class="save undo" id="undo">Undo last</button>
       <button class="save" id="copy">Copy log</button>
+      <button class="save" id="copyjson">Copy JSON</button>
       <button class="save" id="show">Show text</button>
       <button class="save" id="share">Send as file</button>
       <button class="save" id="save">Save text</button>
@@ -1252,9 +1253,7 @@
     flash(btn, ok ? 'Copied' : 'Copy failed');
   }
 
-  $('copy').addEventListener('click', function(){
-    var btn = this;
-    var text = logText();
+  function copyText(btn, text){
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(function(){
         flash(btn, 'Copied');
@@ -1264,7 +1263,10 @@
     } else {
       legacyCopy(text, btn);
     }
-  });
+  }
+
+  $('copy').addEventListener('click', function(){ copyText(this, logText()); });
+  $('copyjson').addEventListener('click', function(){ copyText(this, jsonText()); });
 
   /* ---- copy subject line ---- */
   function subjectLine(){
@@ -1272,19 +1274,7 @@
     return 'In_n_Out - ' + dateStr(now) + ' ' + hms(now);
   }
 
-  $('copysubj').addEventListener('click', function(){
-    var btn = this;
-    var text = subjectLine();
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function(){
-        flash(btn, 'Copied');
-      }, function(){
-        legacyCopy(text, btn);
-      });
-    } else {
-      legacyCopy(text, btn);
-    }
-  });
+  $('copysubj').addEventListener('click', function(){ copyText(this, subjectLine()); });
 
   /* ---- show text (screenshot fallback) ---- */
   $('show').addEventListener('click', function(){
