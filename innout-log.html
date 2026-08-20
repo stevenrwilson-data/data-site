@@ -544,6 +544,7 @@
     <p class="eyebrow">Log</p>
     <div class="logactions">
       <button class="save undo" id="undo">Undo last</button>
+      <button class="save undo" id="reset">Reset session</button>
       <button class="save" id="copy">Copy log</button>
       <button class="save" id="copyjson">Copy JSON</button>
       <button class="save" id="show">Show text</button>
@@ -725,6 +726,7 @@
     $('s-orders-avg').textContent = s.orderAvg === null ? '—' : short(s.orderAvg);
 
     if (!$('textout').hidden) $('textout').textContent = logText();
+    saveState();
   }
 
   /* ---- timer ---- */
@@ -791,6 +793,7 @@
   function carryBump(key, by){
     carry[key] = Math.max(0, carry[key] + by);
     carryFace();
+    saveState();
   }
   $('p-bags').addEventListener('click',  function(){ carryBump('bags',   1); });
   $('m-bags').addEventListener('click',  function(){ carryBump('bags',  -1); });
@@ -1018,6 +1021,7 @@
     if (!tblOpen) openTable();          /* first tap opens a table on its own */
     counts[key] = Math.max(0, counts[key] + by);
     tblFace();
+    saveState();
   }
 
   for (var ci = 0; ci < CATS.length; ci++) {
@@ -1098,6 +1102,7 @@
   function cupBump(key, by){
     cups[key] = Math.max(0, cups[key] + by);
     cupFace();
+    saveState();
   }
 
   for (var zi = 0; zi < SIZES.length; zi++) {
@@ -1122,6 +1127,98 @@
   $('src-fountain').addEventListener('click', function(){ setCupSrc('fountain'); });
   $('src-tables').addEventListener('click', function(){ setCupSrc('tables'); });
   $('src-drive').addEventListener('click', function(){ setCupSrc('drive'); });
+
+
+  /* ---- local persistence ----
+     Written after every logged event and every counter tap, so closing the
+     tab, a reload, or iOS dropping the page does not lose the session.
+     Wrapped in try/catch: if storage is unavailable the app still runs,
+     it just stops surviving reloads. */
+  var STORE_KEY = 'queue_log_state_v1';
+  var restoring = false;
+
+  function saveState(){
+    if (restoring) return;
+    try {
+      var rows = [];
+      for (var i = 0; i < entries.length; i++) {
+        var e = entries[i];
+        rows.push({
+          at: e.at.getTime(), time: e.time, mode: e.mode, kind: e.kind,
+          text: e.text, n: e.n, nums: e.nums, repeat: e.repeat,
+          run: e.run, data: e.data
+        });
+      }
+      localStorage.setItem(STORE_KEY, JSON.stringify({
+        v: 1,
+        entries: rows,
+        carNum: carNum, runId: runId, mode: mode,
+        startAt: startAt ? startAt.getTime() : null,
+        endAt: endAt ? endAt.getTime() : null,
+        runMode: runMode,
+        carry: carry,
+        tblNum: tblNum, tblOpen: tblOpen, counts: counts,
+        cups: cups, cupSrc: cupSrc
+      }));
+    } catch (err) { /* storage full, blocked, or private mode */ }
+  }
+
+  function loadState(){
+    var raw = null;
+    try { raw = localStorage.getItem(STORE_KEY); } catch (err) { return false; }
+    if (!raw) return false;
+    var st;
+    try { st = JSON.parse(raw); } catch (err) { return false; }
+    if (!st || st.v !== 1) return false;
+
+    restoring = true;
+    entries = [];
+    for (var i = 0; i < (st.entries || []).length; i++) {
+      var r = st.entries[i];
+      entries.push({
+        at: new Date(r.at), time: r.time, mode: r.mode, kind: r.kind,
+        text: r.text, n: r.n || 0, nums: r.nums || [], repeat: !!r.repeat,
+        run: r.run || 0, data: r.data || {}
+      });
+    }
+    carNum  = st.carNum || 0;
+    runId   = st.runId  || 0;
+    mode    = st.mode   || 'drive-thru';
+    startAt = st.startAt ? new Date(st.startAt) : null;
+    endAt   = st.endAt   ? new Date(st.endAt)   : null;
+    runMode = st.runMode || null;
+    if (st.carry)  carry  = st.carry;
+    if (st.counts) counts = st.counts;
+    if (st.cups)   cups   = st.cups;
+    tblNum  = st.tblNum || 0;
+    tblOpen = !!st.tblOpen;
+    cupSrc  = st.cupSrc || 'tables';
+    restoring = false;
+    return true;
+  }
+
+  function clearState(){
+    try { localStorage.removeItem(STORE_KEY); } catch (err) {}
+  }
+
+  $('reset').addEventListener('click', function(){
+    var msg = entries.length
+      ? 'Clear this session? ' + entries.length + ' entries will be deleted.'
+      : 'Clear stored session data?';
+    if (!confirm(msg)) return;
+    clearState();
+    entries = [];
+    carNum = 0; runId = 0;
+    startAt = null; endAt = null; runMode = null;
+    carry = { bags: 0, boxes: 0 };
+    tblNum = 0; tblOpen = false;
+    counts = { burgers: 0, fries: 0, animal: 0, drinks: 0 };
+    cups = { sm: 0, md: 0, lg: 0, xl: 0 };
+    $('elapsed').textContent = 'No timer running';
+    $('elapsed').className = 'el off';
+    timerFace(); tblFace(); cupFace(); carryFace(); render();
+    saveState();
+  });
 
   /* ---- undo ---- */
   $('undo').addEventListener('click', function(){
@@ -1162,6 +1259,9 @@
   $('m-counter').addEventListener('click', function(){ setMode('counter'); });
   $('m-tables').addEventListener('click', function(){ setMode('tables'); });
   $('m-cups').addEventListener('click', function(){ setMode('cups'); });
+  /* remember which tab was open too */
+  var _setMode = setMode;
+  setMode = function(m){ _setMode(m); saveState(); };
 
   /* ---- log text ---- */
   function logText(){
@@ -1514,6 +1614,8 @@
     }
   });
 
+  loadState();
+  setMode(mode);
   timerFace();
   tblFace();
   cupFace();
