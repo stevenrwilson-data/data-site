@@ -24,6 +24,7 @@
   }
 
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  button{touch-action:manipulation;}
 
   body{
     margin:0;
@@ -255,11 +256,12 @@
     font-size:19px;font-weight:500;
     color:var(--sand);
     background:rgba(8,65,92,.6);
-    border:1px solid var(--rule);
-    border-radius:14px;padding:15px 16px;
+    border:3px solid var(--salmon);
+    border-radius:14px;padding:13px 14px;
     width:100%;min-width:0;
   }
   #note,#emailto{font-family:var(--font-body);font-size:16px;}
+  #emailto{border:1px solid var(--rule);padding:15px 16px;}
   .entry input:focus{border-color:var(--sand);}
   .entry input::placeholder{color:rgba(247,163,153,.45);}
   .entry .go{
@@ -800,7 +802,7 @@
   $('p-boxes').addEventListener('click', function(){ carryBump('boxes',  1); });
   $('m-boxes').addEventListener('click', function(){ carryBump('boxes', -1); });
 
-  $('cars-car').addEventListener('click', function(){
+  function logCar(){
     carNum++;
     var line = 'CAR ' + carNum;
     if (carry.bags || carry.boxes) {
@@ -812,7 +814,15 @@
     carry.bags = 0;
     carry.boxes = 0;
     carryFace();
-  });
+  }
+  if (window.PointerEvent) {
+    $('cars-car').addEventListener('pointerdown', function(ev){
+      ev.preventDefault();
+      logCar();
+    });
+  } else {
+    $('cars-car').addEventListener('click', logCar);
+  }
   $('cars-hold').addEventListener('click', function(){
     add('hold', 'NOT MOVING UP');
   });
