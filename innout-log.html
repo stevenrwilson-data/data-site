@@ -251,17 +251,18 @@
   /* ---------- text entry ---------- */
   .entry{margin-bottom:22px;}
   .entry .row{display:grid;grid-template-columns:1fr auto;gap:10px;}
+  .entry .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
   .entry input{
     font-family:var(--font-code);
     font-size:19px;font-weight:500;
     color:var(--sand);
     background:rgba(8,65,92,.6);
-    border:3px solid var(--salmon);
-    border-radius:14px;padding:13px 14px;
+    border:1px solid var(--rule);
+    border-radius:14px;padding:15px 16px;
     width:100%;min-width:0;
   }
   #note,#emailto{font-family:var(--font-body);font-size:16px;}
-  #emailto{border:1px solid var(--rule);padding:15px 16px;}
+  #note,#qlen{border:3px solid var(--salmon);padding:13px 14px;}
   .entry input:focus{border-color:var(--sand);}
   .entry input::placeholder{color:rgba(247,163,153,.45);}
   .entry .go{
@@ -335,6 +336,9 @@
   ol.log li.k-order .ev{color:var(--sand);}
   ol.log li.k-table .ev{color:var(--plate);}
   ol.log li.k-cups .ev{color:#9FD3C0;}
+  ol.log li.k-qlen .ev{color:#9FB8D3;}
+  ol.log li.k-qtag .ev{color:#9FB8D3;}
+  ol.log li.k-qout .ev{color:#9FB8D3;font-weight:600;}
   ol.log li.repeat .ev{color:#E58C7F;}
   ol.log li.repeat .md{color:var(--brick);}
   .warn{
@@ -409,6 +413,41 @@
         <button class="minus" id="m-boxes" aria-label="One fewer box">&minus;</button>
         <button class="plus" id="p-boxes" aria-label="One more box">+</button>
       </div>
+    </div>
+
+    <div class="zone">
+      <div class="tblhead">
+        <p class="eyebrow">Car Q</p>
+        <span class="which idle" id="q-which">No car tagged</span>
+      </div>
+
+      <div class="entry">
+        <p class="eyebrow">Cars in line</p>
+        <div class="row">
+          <input id="qlen" type="text" inputmode="numeric" autocomplete="off"
+                 autocapitalize="off" autocorrect="off" spellcheck="false"
+                 placeholder="12">
+          <button class="go" id="qlen-go">Log</button>
+        </div>
+      </div>
+
+      <div class="entry">
+        <p class="eyebrow">Tag a car</p>
+        <div class="row">
+          <input id="qid" type="text" inputmode="text" autocomplete="off"
+                 autocapitalize="characters" autocorrect="off" spellcheck="false"
+                 placeholder="7XYZ">
+          <button class="go" id="qtag-go">Tag</button>
+        </div>
+        <div class="row2">
+          <input id="qahead" type="text" inputmode="numeric" autocomplete="off"
+                 autocorrect="off" spellcheck="false" placeholder="ahead">
+          <input id="qbehind" type="text" inputmode="numeric" autocomplete="off"
+                 autocorrect="off" spellcheck="false" placeholder="behind">
+        </div>
+      </div>
+
+      <button class="act up" id="qout" disabled>Drove off<span class="sub" id="qout-sub">Ends the oldest open car</span></button>
     </div>
   </div>
 
@@ -618,7 +657,8 @@
   var KIND_KEY = {
     timer:'timer_start', timerend:'timer_end', car:'car',
     hold:'not_moving_up', up:'moved_up', order:'order',
-    note:'note', table:'table', cups:'cup_sample'
+    note:'note', table:'table', cups:'cup_sample',
+    qlen:'queue_length', qtag:'queue_tag', qout:'queue_exit'
   };
   function modeKey(m){ return MODE_KEY[m] || m; }
 
@@ -656,8 +696,33 @@
   setInterval(tick, 250);
 
   /* ---- log ---- */
+  /* Seconds since the previous comparable event in this run.
+     Cars pair with cars, counted orders with counted orders, tracked-car
+     tags with tags, tracked-car exits with exits. Repeats are neither given
+     a gap nor used as the anchor for the next one. */
+  function gapSince(kind, now){
+    var run = runEntries();
+    for (var i = run.length - 1; i >= 0; i--) {
+      var p = run[i];
+      if (p.kind !== kind) continue;
+      if (kind === 'order' && (p.repeat || !p.n)) continue;
+      return Math.round((now - p.at) / 1000);
+    }
+    return null;
+  }
+
   function add(kind, text, n, extra){
     var now = new Date();
+    if (kind === 'car' || kind === 'qtag' || kind === 'qout' ||
+        (kind === 'order' && n > 0 && !(extra && extra.repeat))) {
+      var g = gapSince(kind, now);
+      if (g !== null) {
+        text += '  (+' + short(g) + ')';
+        extra = extra || {};
+        extra.data = extra.data || {};
+        extra.data.gap_sec = g;
+      }
+    }
     var e = {
       at: now, time: hms(now), mode: mode,
       kind: kind, text: text, n: n || 0,
@@ -814,6 +879,7 @@
     carry.bags = 0;
     carry.boxes = 0;
     carryFace();
+    return carNum;
   }
   if (window.PointerEvent) {
     $('cars-car').addEventListener('pointerdown', function(ev){
@@ -828,6 +894,85 @@
   });
   $('cars-up').addEventListener('click', function(){
     add('up', 'UP');
+  });
+
+  /* ---- Car Q ----
+     Queue length is typed, not tapped. Tagging follows one car at a time:
+     tag it as it turns into the lot, tap Drove off when it leaves. */
+  var qOpen = [];     /* open tracked cars, oldest first: { num, id, ahead, behind, at:Date } */
+  var qNum  = 0;      /* tracked-car sequence; the typed plate never leaves the device */
+
+  function qInt(id){
+    var v = ($(id).value || '').replace(/[^0-9]/g, '');
+    return v === '' ? null : parseInt(v, 10);
+  }
+  function qFace(){
+    var el = $('q-which');
+    if (qOpen.length) {
+      var bits = [];
+      for (var i = 0; i < qOpen.length; i++) bits.push(qOpen[i].num + ' — ' + qOpen[i].id);
+      el.textContent = bits.join('   ');
+      el.className = 'which';
+    } else {
+      el.textContent = 'No car tagged';
+      el.className = 'which idle';
+    }
+    $('qout').disabled = qOpen.length === 0;
+    $('qout-sub').textContent = qOpen.length
+      ? 'Front of queue: car ' + qOpen[0].num + ' — ' + qOpen[0].id
+      : 'Ends the oldest open car';
+  }
+
+  function logQlen(){
+    var n = qInt('qlen');
+    if (n === null) { $('qlen').focus(); return; }
+    $('qlen').value = '';
+    add('qlen', 'CAR Q — ' + n + (n === 1 ? ' car' : ' cars'),
+        0, { data: { queue_length: n } });
+  }
+  $('qlen-go').addEventListener('click', logQlen);
+  $('qlen').addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter') { ev.preventDefault(); logQlen(); }
+  });
+
+  function tagCar(){
+    var id = ($('qid').value || '').trim();
+    if (!id) { $('qid').focus(); return; }
+    var ahead  = qInt('qahead');
+    var behind = qInt('qbehind');
+    var now = new Date();
+    qNum++;
+    qOpen.push({ num: qNum, id: id, ahead: ahead, behind: behind, at: now });
+    var line = 'TRACKED CAR ' + qNum;
+    if (ahead  !== null) line += ' — AHEAD '  + ahead;
+    if (behind !== null) line += ' — BEHIND ' + behind;
+    $('qid').value = '';
+    $('qahead').value = '';
+    $('qbehind').value = '';
+    add('qtag', line, 0, { data: {
+      tracked_car: qNum, cars_ahead: ahead, cars_behind: behind
+    }});
+    qFace();
+  }
+  $('qtag-go').addEventListener('click', tagCar);
+  $('qid').addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter') { ev.preventDefault(); tagCar(); }
+  });
+
+  $('qout').addEventListener('click', function(){
+    if (!qOpen.length) return;
+    var now  = new Date();
+    var o    = qOpen.shift();
+    var secs = Math.round((now - o.at) / 1000);
+    /* A tracked car leaving is a car leaving, so it counts in the car series
+       too. Do not also tap Car for it. */
+    var cn = logCar();
+    add('qout', 'TRACKED CAR ' + o.num + ' OUT — ' + short(secs) + ' — CAR ' + cn, 0, { data: {
+      tracked_car: o.num, car_number: cn,
+      cars_ahead: o.ahead, cars_behind: o.behind,
+      tagged_at: iso(o.at), wait_sec: secs
+    }});
+    qFace();
   });
 
   /* ---- counter text entry ---- */
@@ -1168,7 +1313,12 @@
         runMode: runMode,
         carry: carry,
         tblNum: tblNum, tblOpen: tblOpen, counts: counts,
-        cups: cups, cupSrc: cupSrc
+        cups: cups, cupSrc: cupSrc,
+        qNum: qNum,
+        qOpen: qOpen.map(function(o){
+          return { num: o.num, id: o.id, ahead: o.ahead,
+                   behind: o.behind, at: o.at.getTime() };
+        })
       }));
     } catch (err) { /* storage full, blocked, or private mode */ }
   }
@@ -1203,6 +1353,11 @@
     tblNum  = st.tblNum || 0;
     tblOpen = !!st.tblOpen;
     cupSrc  = st.cupSrc || 'tables';
+    qNum    = st.qNum || 0;
+    qOpen   = (st.qOpen || []).map(function(o){
+      return { num: o.num, id: o.id, ahead: o.ahead,
+               behind: o.behind, at: new Date(o.at) };
+    });
     restoring = false;
     return true;
   }
@@ -1224,9 +1379,10 @@
     tblNum = 0; tblOpen = false;
     counts = { burgers: 0, fries: 0, animal: 0, drinks: 0 };
     cups = { sm: 0, md: 0, lg: 0, xl: 0 };
+    qOpen = []; qNum = 0;
     $('elapsed').textContent = 'No timer running';
     $('elapsed').className = 'el off';
-    timerFace(); tblFace(); cupFace(); carryFace(); render();
+    timerFace(); tblFace(); cupFace(); carryFace(); qFace(); render();
     saveState();
   });
 
@@ -1235,6 +1391,13 @@
     if (!entries.length) return;
     var e = entries.pop();
     if (e.kind === 'car' && carNum > 0) carNum--;
+    if (e.kind === 'qtag') { qOpen.pop(); if (qNum > 0) qNum--; qFace(); }
+    if (e.kind === 'qout') {
+      qOpen.unshift({ num: e.data.tracked_car, id: '(plate not kept)',
+                      ahead: e.data.cars_ahead, behind: e.data.cars_behind,
+                      at: new Date(e.data.tagged_at) });
+      qFace();
+    }
     if (e.kind === 'table' && tblNum > 0) { tblNum--; clearTable(); }
     if (e.kind === 'timer') { startAt = null; runMode = null; if (runId > 0) runId--; }
     if (e.kind === 'timerend') {
@@ -1630,6 +1793,7 @@
   tblFace();
   cupFace();
   carryFace();
+  qFace();
   tick();
   render();
 })();
