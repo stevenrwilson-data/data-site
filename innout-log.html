@@ -241,6 +241,7 @@
   .act.car{background:var(--blue);color:var(--sand);}
   .act.car .sub{color:var(--salmon);}
   .act.hold{background:var(--brick);color:var(--sand);}
+  .holdflag{color:var(--brick);font-size:.62em;margin-left:8px;vertical-align:middle;}
   .act.hold .sub{color:#F9DDD7;}
   .act.up{
     grid-column:1/-1;min-height:84px;
@@ -380,7 +381,7 @@
   <div id="wrap-cars">
     <div class="stats">
       <div class="stat">
-        <span class="val" id="s-cars">0</span>
+        <span class="val"><span id="s-cars">0</span><span class="holdflag" id="holdflag" hidden>&#9650;</span></span>
         <span class="lab">Cars this run</span>
       </div>
       <div class="stat">
@@ -427,7 +428,7 @@
           <input id="qlen" type="text" inputmode="numeric" autocomplete="off"
                  autocapitalize="off" autocorrect="off" spellcheck="false"
                  placeholder="12">
-          <button class="go" id="qlen-go">Log</button>
+          <button class="go" id="qlen-go">Cars</button>
         </div>
       </div>
 
@@ -471,7 +472,7 @@
           <input id="orders" type="text" inputmode="text" autocomplete="off"
                  autocapitalize="off" autocorrect="off" spellcheck="false"
                  placeholder="23,26   or   x">
-          <button class="go" id="orders-go">Log</button>
+          <button class="go" id="orders-go">Order</button>
         </div>
         <p class="warn" id="dupwarn" hidden></p>
       </div>
@@ -573,7 +574,7 @@
     </div>
   </div>
 
-  <div class="entry">
+  <div class="entry" id="notebox">
     <p class="eyebrow">Note</p>
     <div class="row">
       <input id="note" type="text" autocomplete="off" placeholder="Diner half full, no line, 4 kitchen staff">
@@ -881,18 +882,31 @@
     carryFace();
     return carNum;
   }
+  /* Tapping Car with no timer running starts the drive-thru timer first,
+     so the car is never logged outside a run. */
+  function carTap(){
+    if (!startAt) toggleTimer();
+    logCar();
+  }
   if (window.PointerEvent) {
     $('cars-car').addEventListener('pointerdown', function(ev){
       ev.preventDefault();
-      logCar();
+      carTap();
     });
   } else {
-    $('cars-car').addEventListener('click', logCar);
+    $('cars-car').addEventListener('click', carTap);
   }
+  /* Held-at-payment indicator, shown beside the car count so it is visible
+     without scrolling down to the button. */
+  var holdOn = false;
+  function holdFace(){ $('holdflag').hidden = !holdOn; }
+
   $('cars-hold').addEventListener('click', function(){
+    holdOn = true; holdFace();
     add('hold', 'NOT MOVING UP');
   });
   $('cars-up').addEventListener('click', function(){
+    holdOn = false; holdFace();
     add('up', 'UP');
   });
 
@@ -1027,6 +1041,9 @@
       warn.textContent = '';
       warn.hidden = true;
     }
+
+    /* Same rule as the Car button: a logged order starts the counter timer. */
+    if (!startAt) toggleTimer();
 
     var tag = dupes.length ? ' — REPEAT: ' + dupes.join(', ') : '';
     var flag = { nums: nums, repeat: dupes.length > 0 };
@@ -1313,7 +1330,7 @@
         runMode: runMode,
         carry: carry,
         tblNum: tblNum, tblOpen: tblOpen, counts: counts,
-        cups: cups, cupSrc: cupSrc,
+        cups: cups, cupSrc: cupSrc, holdOn: holdOn,
         qNum: qNum,
         qOpen: qOpen.map(function(o){
           return { num: o.num, id: o.id, ahead: o.ahead,
@@ -1353,6 +1370,7 @@
     tblNum  = st.tblNum || 0;
     tblOpen = !!st.tblOpen;
     cupSrc  = st.cupSrc || 'tables';
+    holdOn  = !!st.holdOn;
     qNum    = st.qNum || 0;
     qOpen   = (st.qOpen || []).map(function(o){
       return { num: o.num, id: o.id, ahead: o.ahead,
@@ -1379,10 +1397,10 @@
     tblNum = 0; tblOpen = false;
     counts = { burgers: 0, fries: 0, animal: 0, drinks: 0 };
     cups = { sm: 0, md: 0, lg: 0, xl: 0 };
-    qOpen = []; qNum = 0;
+    qOpen = []; qNum = 0; holdOn = false;
     $('elapsed').textContent = 'No timer running';
     $('elapsed').className = 'el off';
-    timerFace(); tblFace(); cupFace(); carryFace(); qFace(); render();
+    timerFace(); tblFace(); cupFace(); carryFace(); qFace(); holdFace(); render();
     saveState();
   });
 
@@ -1390,6 +1408,8 @@
   $('undo').addEventListener('click', function(){
     if (!entries.length) return;
     var e = entries.pop();
+    if (e.kind === 'hold') { holdOn = false; holdFace(); }
+    if (e.kind === 'up')   { holdOn = true;  holdFace(); }
     if (e.kind === 'car' && carNum > 0) carNum--;
     if (e.kind === 'qtag') { qOpen.pop(); if (qNum > 0) qNum--; qFace(); }
     if (e.kind === 'qout') {
@@ -1427,6 +1447,21 @@
     $('wrap-counter').hidden = m !== 'counter';
     $('wrap-tables').hidden  = m !== 'tables';
     $('wrap-cups').hidden    = m !== 'cups';
+    placeNote(m);
+  }
+
+  /* One Note field, moved into whichever panel is showing so it always sits
+     just under that panel's controls instead of at the bottom of the page. */
+  function placeNote(m){
+    var wrap = m === 'drive-thru' ? 'wrap-cars'
+             : m === 'counter'    ? 'wrap-counter'
+             : m === 'tables'     ? 'wrap-tables'
+             : 'wrap-cups';
+    var host = $(wrap);
+    var pad  = host.querySelector('.pad');
+    var note = $('notebox');
+    if (pad && pad.nextSibling !== note) host.insertBefore(note, pad.nextSibling);
+    else if (!pad && note.parentNode !== host) host.appendChild(note);
   }
   $('m-cars').addEventListener('click', function(){ setMode('drive-thru'); });
   $('m-counter').addEventListener('click', function(){ setMode('counter'); });
@@ -1794,6 +1829,7 @@
   cupFace();
   carryFace();
   qFace();
+  holdFace();
   tick();
   render();
 })();
