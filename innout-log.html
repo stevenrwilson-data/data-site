@@ -253,6 +253,10 @@
   .entry{margin-bottom:22px;}
   .entry .row{display:grid;grid-template-columns:1fr auto;gap:10px;}
   .entry .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;}
+  .entry .row.ctrrow{display:flex;align-items:stretch;flex-wrap:nowrap;gap:10px;}
+  .entry .row.ctrrow #orders{flex:1 1 auto;min-width:0;width:auto;}
+  .entry .row.ctrrow #orders-go{flex:0 0 auto;}
+  .ctrmark{flex:0 0 auto;align-self:center;font-size:30px;line-height:1;}
   .entry input{
     font-family:var(--font-code);
     font-size:19px;font-weight:500;
@@ -301,6 +305,7 @@
   .save.undo:disabled:hover{color:var(--salmon);border-color:rgba(142,68,61,.9);}
 
   .emailrow{margin:16px 0 0;}
+  .emailmine{margin-top:10px;}
 
   .textout{
     background:var(--plate);
@@ -468,7 +473,8 @@
       <button class="act timer" id="ctr-timer">Start counter timer</button>
       <div class="entry">
         <p class="eyebrow">Orders handed out</p>
-        <div class="row">
+        <div class="row ctrrow">
+          <span class="ctrmark">🧾</span>
           <input id="orders" type="text" inputmode="text" autocomplete="off"
                  autocapitalize="off" autocorrect="off" spellcheck="false"
                  placeholder="23,26   or   x">
@@ -602,6 +608,9 @@
                autocapitalize="off" autocorrect="off" spellcheck="false"
                placeholder="you@example.com">
         <button class="go" id="email">Create</button>
+      </div>
+      <div class="emailmine">
+        <button class="save" id="emailmine">Use my email</button>
       </div>
     </div>
   </div>
@@ -1608,6 +1617,9 @@
     window.location.href = href;
   }
   $('email').addEventListener('click', createEmail);
+  $('emailmine').addEventListener('click', function(){
+    $('emailto').value = 'twilightmoon@mac.com';
+  });
   $('emailto').addEventListener('keydown', function(ev){
     if (ev.key === 'Enter') { ev.preventDefault(); createEmail(); }
   });
