@@ -999,11 +999,13 @@
   });
 
   /* ---- counter text entry ---- */
-  /* First time each order number was logged in this run. */
+  /* First time each order number was logged in the last 30 min of this run. */
   function seenNumbers(){
     var seen = {};
     var run = runEntries();
+    var cutoff = Date.now() - 30 * 60 * 1000;
     for (var i = 0; i < run.length; i++) {
+      if (run[i].at < cutoff) continue;
       var ns = run[i].nums || [];
       for (var j = 0; j < ns.length; j++) {
         if (!(ns[j] in seen)) seen[ns[j]] = run[i].time;
