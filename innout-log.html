@@ -355,6 +355,12 @@
     font-family:var(--font-body);font-size:15px;
     color:var(--salmon);opacity:.85;
   }
+  .act.timer:disabled{opacity:.4;cursor:default;}
+  .hdrend{margin:10px 0 4px;width:100%;}
+  .linegrid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:10px;}
+  .linegrid .save{padding:11px 4px;font-size:11px;letter-spacing:.06em;}
+  .dtlgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px;}
+  .dtlgrid .save{padding:11px 4px;font-size:11px;letter-spacing:.06em;}
   .empty{
     font-family:var(--font-code);font-size:13px;
     color:var(--salmon);opacity:.55;
@@ -368,6 +374,7 @@
 
   <header class="head">
     <div class="mark">Queue Log <span class="bar">|</span> <span id="today">—</span></div>
+    <button class="act timer running hdrend" id="hdr-end" hidden>End timer</button>
     <div class="clock" id="clock">--:--:--</div>
     <div class="statline">
       <span class="el off" id="elapsed">No timer running</span>
@@ -455,6 +462,11 @@
 
       <button class="act up" id="qout" disabled>Drove off<span class="sub" id="qout-sub">Ends the oldest open car</span></button>
     </div>
+    <div class="dtlgrid" id="dtlgrid">
+      <button class="save" data-dtl="DTL NOT FULL">DTL not full</button>
+      <button class="save" data-dtl="DTL FULL">DTL full</button>
+      <button class="save" data-dtl="DTL TO STREET">DTL to street</button>
+    </div>
   </div>
 
   <!-- COUNTER -->
@@ -482,6 +494,13 @@
         </div>
         <p class="warn" id="dupwarn" hidden></p>
       </div>
+    </div>
+    <div class="linegrid" id="linegrid">
+      <button class="save" data-line="0">0</button>
+      <button class="save" data-line="1-3">1-3</button>
+      <button class="save" data-line="4-6">4-6</button>
+      <button class="save" data-line="7-10">7-10</button>
+      <button class="save" data-line="11+">11+</button>
     </div>
   </div>
 
@@ -592,6 +611,7 @@
     <p class="eyebrow">Log</p>
     <div class="logactions">
       <button class="save undo" id="undo">Undo last</button>
+      <button class="save undo" id="redo">Redo</button>
       <button class="save undo" id="reset">Reset session</button>
       <button class="save" id="copy">Copy log</button>
       <button class="save" id="copyjson">Copy JSON</button>
@@ -705,6 +725,39 @@
   }
   setInterval(tick, 250);
 
+  /* ---- auto shut-off: 10 min with nothing logged ends the run ---- */
+  /* Timers don't fire while the page is backgrounded or the phone is asleep,
+     so this also runs before every new entry and ends the stale run
+     retroactively, at the time of the last thing actually logged. */
+  function lastActivity(){
+    for (var i = entries.length - 1; i >= 0; i--) {
+      if (entries[i].kind !== 'timer') return entries[i].at;
+    }
+    return startAt;
+  }
+
+  function idleCheck(){
+    if (!startAt) return false;
+    var last = lastActivity();
+    if (!last) return false;
+    if (Date.now() - last.getTime() < 10 * 60 * 1000) return false;
+
+    var secs = (last - startAt) / 1000;
+    var was = runMode;
+    add('note', 'AUTO-ENDED — no entries for 10 min', 0, { at: last });
+    add('timerend', 'TIMER ENDED — ' + label(was) + ' — RUN ' + dur(secs), 0,
+        { at: last, data: { duration_sec: Math.round(secs),
+                            run_mode: modeKey(was), auto_ended: true } });
+    endAt = last;
+    startAt = null;
+    runMode = null;
+    timerFace();
+    tick();
+    render();
+    return true;
+  }
+  setInterval(idleCheck, 15000);
+
   /* ---- log ---- */
   /* Seconds since the previous comparable event in this run.
      Cars pair with cars, counted orders with counted orders, tracked-car
@@ -721,8 +774,15 @@
     return null;
   }
 
+  var closing = false;
+
   function add(kind, text, n, extra){
-    var now = new Date();
+    if (!closing && !restoring && kind !== 'timer' && kind !== 'timerend') {
+      closing = true;
+      idleCheck();
+      closing = false;
+    }
+    var now = (extra && extra.at) ? extra.at : new Date();
     if (kind === 'car' || kind === 'qtag' || kind === 'qout' ||
         (kind === 'order' && n > 0 && !(extra && extra.repeat))) {
       var g = gapSince(kind, now);
@@ -742,6 +802,7 @@
       data: (extra && extra.data) || {}
     };
     entries.push(e);
+    if (typeof redoStack !== 'undefined' && !restoring) redoStack.length = 0;
     render();
   }
 
@@ -795,6 +856,7 @@
     $('empty').hidden = entries.length > 0;
     $('count').textContent = entries.length + (entries.length === 1 ? ' entry' : ' entries');
     $('undo').disabled = entries.length === 0;
+    $('redo').disabled = typeof redoStack === 'undefined' || redoStack.length === 0;
 
     var s = runStats();
     $('s-cars').textContent = s.cars;
@@ -817,6 +879,11 @@
     $('ctr-timer').classList.toggle('running', running);
     $('tbl-timer').classList.toggle('running', running);
     $('cup-timer').classList.toggle('running', running);
+    $('cars-timer').disabled = running;
+    $('ctr-timer').disabled  = running;
+    $('tbl-timer').disabled  = running;
+    $('cup-timer').disabled  = running;
+    $('hdr-end').hidden = !running;
   }
 
   function toggleTimer(){
@@ -844,6 +911,18 @@
     tick();
   }
   $('cars-timer').addEventListener('click', toggleTimer);
+  $('hdr-end').addEventListener('click', toggleTimer);
+
+  function quickLog(sel, attr){
+    var b = document.querySelectorAll(sel + ' [' + attr + ']');
+    for (var i = 0; i < b.length; i++) {
+      b[i].addEventListener('click', function(){
+        add('note', this.getAttribute(attr));
+      });
+    }
+  }
+  quickLog('#linegrid', 'data-line');
+  quickLog('#dtlgrid', 'data-dtl');
   $('ctr-timer').addEventListener('click', toggleTimer);
   $('tbl-timer').addEventListener('click', toggleTimer);
   $('cup-timer').addEventListener('click', toggleTimer);
@@ -1320,45 +1399,43 @@
   var STORE_KEY = 'queue_log_state_v1';
   var restoring = false;
 
+  function snapshot(){
+    var rows = [];
+    for (var i = 0; i < entries.length; i++) {
+      var e = entries[i];
+      rows.push({
+        at: e.at.getTime(), time: e.time, mode: e.mode, kind: e.kind,
+        text: e.text, n: e.n, nums: e.nums, repeat: e.repeat,
+        run: e.run, data: e.data
+      });
+    }
+    return {
+      v: 1,
+      entries: rows,
+      carNum: carNum, runId: runId, mode: mode,
+      startAt: startAt ? startAt.getTime() : null,
+      endAt: endAt ? endAt.getTime() : null,
+      runMode: runMode,
+      carry: carry,
+      tblNum: tblNum, tblOpen: tblOpen, counts: counts,
+      cups: cups, cupSrc: cupSrc, holdOn: holdOn,
+      qNum: qNum,
+      qOpen: qOpen.map(function(o){
+        return { num: o.num, id: o.id, ahead: o.ahead,
+                 behind: o.behind, at: o.at.getTime() };
+      })
+    };
+  }
+
   function saveState(){
     if (restoring) return;
     try {
-      var rows = [];
-      for (var i = 0; i < entries.length; i++) {
-        var e = entries[i];
-        rows.push({
-          at: e.at.getTime(), time: e.time, mode: e.mode, kind: e.kind,
-          text: e.text, n: e.n, nums: e.nums, repeat: e.repeat,
-          run: e.run, data: e.data
-        });
-      }
-      localStorage.setItem(STORE_KEY, JSON.stringify({
-        v: 1,
-        entries: rows,
-        carNum: carNum, runId: runId, mode: mode,
-        startAt: startAt ? startAt.getTime() : null,
-        endAt: endAt ? endAt.getTime() : null,
-        runMode: runMode,
-        carry: carry,
-        tblNum: tblNum, tblOpen: tblOpen, counts: counts,
-        cups: cups, cupSrc: cupSrc, holdOn: holdOn,
-        qNum: qNum,
-        qOpen: qOpen.map(function(o){
-          return { num: o.num, id: o.id, ahead: o.ahead,
-                   behind: o.behind, at: o.at.getTime() };
-        })
-      }));
+      localStorage.setItem(STORE_KEY, JSON.stringify(snapshot()));
     } catch (err) { /* storage full, blocked, or private mode */ }
   }
 
-  function loadState(){
-    var raw = null;
-    try { raw = localStorage.getItem(STORE_KEY); } catch (err) { return false; }
-    if (!raw) return false;
-    var st;
-    try { st = JSON.parse(raw); } catch (err) { return false; }
+  function applySnap(st){
     if (!st || st.v !== 1) return false;
-
     restoring = true;
     entries = [];
     for (var i = 0; i < (st.entries || []).length; i++) {
@@ -1391,6 +1468,15 @@
     return true;
   }
 
+  function loadState(){
+    var raw = null;
+    try { raw = localStorage.getItem(STORE_KEY); } catch (err) { return false; }
+    if (!raw) return false;
+    var st;
+    try { st = JSON.parse(raw); } catch (err) { return false; }
+    return applySnap(st);
+  }
+
   function clearState(){
     try { localStorage.removeItem(STORE_KEY); } catch (err) {}
   }
@@ -1415,9 +1501,13 @@
     saveState();
   });
 
-  /* ---- undo ---- */
+  /* ---- undo / redo (4 levels) ---- */
+  var redoStack = [];
+
   $('undo').addEventListener('click', function(){
     if (!entries.length) return;
+    redoStack.push(snapshot());
+    if (redoStack.length > 4) redoStack.shift();
     var e = entries.pop();
     if (e.kind === 'hold') { holdOn = false; holdFace(); }
     if (e.kind === 'up')   { holdOn = true;  holdFace(); }
@@ -1443,6 +1533,14 @@
       endAt = null;
     }
     timerFace();
+    tick();
+    render();
+  });
+
+  $('redo').addEventListener('click', function(){
+    if (!redoStack.length) return;
+    applySnap(redoStack.pop());
+    timerFace(); tblFace(); cupFace(); carryFace(); qFace(); holdFace();
     tick();
     render();
   });
@@ -1837,6 +1935,7 @@
   });
 
   loadState();
+  idleCheck();
   setMode(mode);
   timerFace();
   tblFace();
