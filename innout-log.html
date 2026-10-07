@@ -345,6 +345,9 @@
   ol.log li.k-qlen .ev{color:#9FB8D3;}
   ol.log li.k-qtag .ev{color:#9FB8D3;}
   ol.log li.k-qout .ev{color:#9FB8D3;font-weight:600;}
+  ol.log li.k-mark .ev{color:#9FB8D3;}
+  ol.log li.k-markout .ev{color:#9FB8D3;font-weight:600;}
+  #mark{width:100%;margin-top:22px;}
   ol.log li.repeat .ev{color:#E58C7F;}
   ol.log li.repeat .md{color:var(--brick);}
   .warn{
@@ -502,6 +505,7 @@
       <button class="save" data-line="7-10">7-10</button>
       <button class="save" data-line="11+">11+</button>
     </div>
+    <button class="act car" id="mark">Mark person<span class="sub" id="mark-sub">When they order</span></button>
   </div>
 
   <!-- TABLES -->
@@ -688,7 +692,8 @@
     timer:'timer_start', timerend:'timer_end', car:'car',
     hold:'not_moving_up', up:'moved_up', order:'order',
     note:'note', table:'table', cups:'cup_sample',
-    qlen:'queue_length', qtag:'queue_tag', qout:'queue_exit'
+    qlen:'queue_length', qtag:'queue_tag', qout:'queue_exit',
+    mark:'person_marked', markout:'person_got_order'
   };
   function modeKey(m){ return MODE_KEY[m] || m; }
 
@@ -1077,6 +1082,40 @@
     qFace();
   });
 
+  /* ---- marked person ----
+     One button, one person at a time: tap when they order (Mark person),
+     tap again when they get their order (Person pick up). Does not log an
+     order; keep logging announced numbers as usual. */
+  var markOpen = null;   /* { num, at:Date } while a person is being watched */
+  var markNum  = 0;
+
+  function markFace(){
+    $('mark').firstChild.nodeValue = markOpen ? 'Person pick up' : 'Mark person';
+    $('mark').className = markOpen ? 'act hold' : 'act car';
+    $('mark-sub').textContent = markOpen
+      ? 'Person ' + markOpen.num + ' — since ' + hms(markOpen.at)
+      : 'When they order';
+  }
+
+  $('mark').addEventListener('click', function(){
+    var now = new Date();
+    if (!markOpen) {
+      markNum++;
+      markOpen = { num: markNum, at: now };
+      add('mark', 'MARKED PERSON ' + markNum + ' — ORDERED', 0, { data: {
+        marked_person: markNum
+      }});
+    } else {
+      var o = markOpen;
+      var secs = Math.round((now - o.at) / 1000);
+      markOpen = null;
+      add('markout', 'MARKED PERSON ' + o.num + ' — PICKED UP — ' + short(secs), 0, { data: {
+        marked_person: o.num, marked_at: iso(o.at), wait_sec: secs
+      }});
+    }
+    markFace();
+  });
+
   /* ---- counter text entry ---- */
   /* First time each order number was logged in the last 30 min of this run. */
   function seenNumbers(){
@@ -1420,6 +1459,8 @@
       tblNum: tblNum, tblOpen: tblOpen, counts: counts,
       cups: cups, cupSrc: cupSrc, holdOn: holdOn,
       qNum: qNum,
+      markNum: markNum,
+      markOpen: markOpen ? { num: markOpen.num, at: markOpen.at.getTime() } : null,
       qOpen: qOpen.map(function(o){
         return { num: o.num, id: o.id, ahead: o.ahead,
                  behind: o.behind, at: o.at.getTime() };
@@ -1460,6 +1501,9 @@
     cupSrc  = st.cupSrc || 'tables';
     holdOn  = !!st.holdOn;
     qNum    = st.qNum || 0;
+    markNum  = st.markNum || 0;
+    markOpen = (st.markOpen && st.markOpen.at)
+      ? { num: st.markOpen.num, at: new Date(st.markOpen.at) } : null;
     qOpen   = (st.qOpen || []).map(function(o){
       return { num: o.num, id: o.id, ahead: o.ahead,
                behind: o.behind, at: new Date(o.at) };
@@ -1495,6 +1539,7 @@
     counts = { burgers: 0, fries: 0, animal: 0, drinks: 0 };
     cups = { sm: 0, md: 0, lg: 0, xl: 0 };
     qOpen = []; qNum = 0; holdOn = false;
+    markOpen = null; markNum = 0; markFace();
     $('elapsed').textContent = 'No timer running';
     $('elapsed').className = 'el off';
     timerFace(); tblFace(); cupFace(); carryFace(); qFace(); holdFace(); render();
@@ -1512,6 +1557,11 @@
     if (e.kind === 'hold') { holdOn = false; holdFace(); }
     if (e.kind === 'up')   { holdOn = true;  holdFace(); }
     if (e.kind === 'car' && carNum > 0) carNum--;
+    if (e.kind === 'mark') { markOpen = null; if (markNum > 0) markNum--; markFace(); }
+    if (e.kind === 'markout') {
+      markOpen = { num: e.data.marked_person, at: new Date(e.data.marked_at) };
+      markFace();
+    }
     if (e.kind === 'qtag') { qOpen.pop(); if (qNum > 0) qNum--; qFace(); }
     if (e.kind === 'qout') {
       qOpen.unshift({ num: e.data.tracked_car, id: '(plate not kept)',
@@ -1540,7 +1590,7 @@
   $('redo').addEventListener('click', function(){
     if (!redoStack.length) return;
     applySnap(redoStack.pop());
-    timerFace(); tblFace(); cupFace(); carryFace(); qFace(); holdFace();
+    timerFace(); tblFace(); cupFace(); carryFace(); qFace(); holdFace(); markFace();
     tick();
     render();
   });
@@ -1943,6 +1993,7 @@
   carryFace();
   qFace();
   holdFace();
+  markFace();
   tick();
   render();
 })();
