@@ -105,7 +105,13 @@
   }
   .zone > .act{width:100%;}
   #wrap-tables > .pad,
-  #wrap-cups > .pad{margin-top:22px;}
+  #wrap-cups > .pad,
+  #wrap-fries > .pad,
+  #wrap-prices > .pad{margin-top:22px;}
+  .pricegrid{display:grid;grid-template-columns:1fr 130px;gap:10px;align-items:center;margin-bottom:18px;}
+  .pricegrid label{font-weight:700;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--salmon);}
+  .pricegrid input{font-family:var(--font-code);font-size:19px;font-weight:500;color:var(--sand);background:rgba(8,65,92,.6);border:1px solid var(--rule);border-radius:14px;padding:12px 14px;width:100%;min-width:0;text-align:right;}
+  .pricegrid input:focus{border-color:var(--sand);outline:none;}
   .estline{
     font-family:var(--font-code);font-size:15px;
     color:var(--sand);margin:14px 0 0;
@@ -342,6 +348,8 @@
   ol.log li.k-order .ev{color:var(--sand);}
   ol.log li.k-table .ev{color:var(--plate);}
   ol.log li.k-cups .ev{color:#9FD3C0;}
+  ol.log li.k-fries .ev{color:#9FD3C0;}
+  ol.log li.k-prices .ev{color:var(--plate);}
   ol.log li.k-qlen .ev{color:#9FB8D3;}
   ol.log li.k-qtag .ev{color:#9FB8D3;}
   ol.log li.k-qout .ev{color:#9FB8D3;font-weight:600;}
@@ -390,6 +398,8 @@
     <button id="m-counter" aria-pressed="false">Counter</button>
     <button id="m-tables" aria-pressed="false">Tables</button>
     <button id="m-cups" aria-pressed="false">Cups</button>
+    <button id="m-fry" aria-pressed="false">Fries</button>
+    <button id="m-price" aria-pressed="false">Prices</button>
   </div>
 
   <!-- CARS -->
@@ -497,6 +507,30 @@
         </div>
         <p class="warn" id="dupwarn" hidden></p>
       </div>
+      <div class="zone">
+        <div class="tblhead">
+          <p class="eyebrow">Containers for next order</p>
+          <span class="which idle" id="ctr-which">None counted</span>
+        </div>
+        <div class="trow">
+          <span class="name">Bags</span>
+          <span class="cnt" id="c-cbags">0</span>
+          <button class="minus" id="m-cbags" aria-label="One fewer bag">&minus;</button>
+          <button class="plus" id="p-cbags" aria-label="One more bag">+</button>
+        </div>
+        <div class="trow">
+          <span class="name">Trays</span>
+          <span class="cnt" id="c-ctrays">0</span>
+          <button class="minus" id="m-ctrays" aria-label="One fewer tray">&minus;</button>
+          <button class="plus" id="p-ctrays" aria-label="One more tray">+</button>
+        </div>
+        <div class="trow">
+          <span class="name">Boxes</span>
+          <span class="cnt" id="c-cboxes">0</span>
+          <button class="minus" id="m-cboxes" aria-label="One fewer box">&minus;</button>
+          <button class="plus" id="p-cboxes" aria-label="One more box">+</button>
+        </div>
+      </div>
     </div>
     <div class="linegrid" id="linegrid">
       <button class="save" data-line="0">0</button>
@@ -603,6 +637,68 @@
     </div>
   </div>
 
+  <!-- FRIES -->
+  <div id="wrap-fries" hidden>
+    <div class="pad">
+      <div>
+        <div class="tblhead">
+          <p class="eyebrow">Fries sample</p>
+          <span class="which idle" id="fry-n">0 in sample</span>
+        </div>
+
+        <div class="trow">
+          <span class="name">Fries</span>
+          <span class="cnt" id="c-ffr">0</span>
+          <button class="minus" id="m-ffr" aria-label="One fewer fries">&minus;</button>
+          <button class="plus" id="p-ffr" aria-label="One more fries">+</button>
+        </div>
+        <div class="trow">
+          <span class="name">Animal fries</span>
+          <span class="cnt" id="c-fan">0</span>
+          <button class="minus" id="m-fan" aria-label="One fewer animal fries">&minus;</button>
+          <button class="plus" id="p-fan" aria-label="One more animal fries">+</button>
+        </div>
+
+        <p class="estline" id="fry-dist">&mdash;</p>
+
+        <button class="tblsave" id="fry-save">Save sample</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRICES -->
+  <div id="wrap-prices" hidden>
+    <div class="pad">
+      <div>
+        <div class="tblhead">
+          <p class="eyebrow">Menu prices</p>
+          <span class="which idle" id="price-n">None saved</span>
+        </div>
+        <div class="pricegrid">
+        <label for="pr-dd">Double-Double</label>
+        <input id="pr-dd" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00">
+        <label for="pr-cb">Cheeseburger</label>
+        <input id="pr-cb" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00">
+        <label for="pr-hb">Hamburger</label>
+        <input id="pr-hb" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00">
+        <label for="pr-fr">Fries</label>
+        <input id="pr-fr" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00">
+        <label for="pr-af">Animal fries</label>
+        <input id="pr-af" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00">
+        <label for="pr-md">Medium drink</label>
+        <input id="pr-md" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00">
+        <label for="pr-c1">Combo 1</label>
+        <input id="pr-c1" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00">
+        <label for="pr-c2">Combo 2</label>
+        <input id="pr-c2" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00">
+        <label for="pr-c3">Combo 3</label>
+        <input id="pr-c3" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00">
+        </div>
+        <button class="tblsave" id="price-save">Save prices</button>
+      </div>
+    </div>
+  </div>
+
   <div class="entry" id="notebox">
     <p class="eyebrow">Note</p>
     <div class="row">
@@ -687,11 +783,11 @@
     if (sec >= 3600) return dur(sec);
     return Math.floor(sec / 60) + ':' + pad(sec % 60);
   }
-  var MODE_KEY = { 'drive-thru':'drive_thru', 'counter':'counter', 'tables':'tables', 'cups':'cups' };
+  var MODE_KEY = { 'drive-thru':'drive_thru', 'counter':'counter', 'tables':'tables', 'cups':'cups', 'fries':'fries', 'prices':'prices' };
   var KIND_KEY = {
     timer:'timer_start', timerend:'timer_end', car:'car',
     hold:'not_moving_up', up:'moved_up', order:'order',
-    note:'note', table:'table', cups:'cup_sample',
+    note:'note', table:'table', cups:'cup_sample', fries:'fries_sample', prices:'menu_prices',
     qlen:'queue_length', qtag:'queue_tag', qout:'queue_exit',
     mark:'person_marked', markout:'person_got_order'
   };
@@ -709,6 +805,8 @@
     if (m === 'counter') return 'COUNTER';
     if (m === 'tables')  return 'TABLES';
     if (m === 'cups')    return 'CUPS';
+    if (m === 'fries')   return 'FRIES';
+    if (m === 'prices')  return 'PRICES';
     return 'DRIVE-THRU';
   }
 
@@ -1116,6 +1214,52 @@
     markFace();
   });
 
+  /* ---- counter containers ----
+     Same idea as the drive-thru containers: count bags, trays and boxes,
+     and they attach to the next order logged, then reset. */
+  var ctrCarry = { bags: 0, trays: 0, boxes: 0 };
+
+  function ctrCarryFace(){
+    $('c-cbags').textContent  = ctrCarry.bags;
+    $('c-ctrays').textContent = ctrCarry.trays;
+    $('c-cboxes').textContent = ctrCarry.boxes;
+    $('m-cbags').disabled  = ctrCarry.bags  === 0;
+    $('m-ctrays').disabled = ctrCarry.trays === 0;
+    $('m-cboxes').disabled = ctrCarry.boxes === 0;
+    var w = $('ctr-which');
+    if (ctrCarry.bags || ctrCarry.trays || ctrCarry.boxes) {
+      w.textContent = ctrCarry.bags + ' bag' + (ctrCarry.bags === 1 ? '' : 's') +
+                      ', ' + ctrCarry.trays + ' tray' + (ctrCarry.trays === 1 ? '' : 's') +
+                      ', ' + ctrCarry.boxes + ' box' + (ctrCarry.boxes === 1 ? '' : 'es');
+      w.className = 'which';
+    } else {
+      w.textContent = 'None counted';
+      w.className = 'which idle';
+    }
+  }
+
+  function ctrCarryBump(key, by){
+    ctrCarry[key] = Math.max(0, ctrCarry[key] + by);
+    ctrCarryFace();
+    saveState();
+  }
+  $('p-cbags').addEventListener('click',  function(){ ctrCarryBump('bags',   1); });
+  $('m-cbags').addEventListener('click',  function(){ ctrCarryBump('bags',  -1); });
+  $('p-ctrays').addEventListener('click', function(){ ctrCarryBump('trays',  1); });
+  $('m-ctrays').addEventListener('click', function(){ ctrCarryBump('trays', -1); });
+  $('p-cboxes').addEventListener('click', function(){ ctrCarryBump('boxes',  1); });
+  $('m-cboxes').addEventListener('click', function(){ ctrCarryBump('boxes', -1); });
+
+  /* Applied to the first order entry of a submit, then cleared. */
+  function takeCtrCarry(text, data){
+    if (!(ctrCarry.bags || ctrCarry.trays || ctrCarry.boxes)) return text;
+    data.bags = ctrCarry.bags; data.trays = ctrCarry.trays; data.boxes = ctrCarry.boxes;
+    text += ' — BAGS ' + ctrCarry.bags + ' TRAYS ' + ctrCarry.trays + ' BOXES ' + ctrCarry.boxes;
+    ctrCarry = { bags: 0, trays: 0, boxes: 0 };
+    ctrCarryFace();
+    return text;
+  }
+
   /* ---- counter text entry ---- */
   /* First time each order number was logged in the last 30 min of this run. */
   function seenNumbers(){
@@ -1183,15 +1327,16 @@
       simultaneous: nums.length > 1, unannounced: false
     };
     if (nums.length === 1) {
-      add('order', 'ORDER ' + nums[0] + tag, keep, flag);
+      add('order', takeCtrCarry('ORDER ' + nums[0] + tag, flag.data), keep, flag);
     } else if (nums.length > 1) {
-      add('order', 'ORDERS ' + nums.join(', ') + ' (simultaneous)' + tag, keep, flag);
+      add('order', takeCtrCarry('ORDERS ' + nums.join(', ') + ' (simultaneous)' + tag, flag.data), keep, flag);
     }
     for (var j = 0; j < xs; j++) {
-      add('order', 'X (no announced order)', 1, { data: {
+      var xdata = {
         numbers: [], repeats: [], counted: 1,
         simultaneous: false, unannounced: true
-      }});
+      };
+      add('order', takeCtrCarry('X (no announced order)', xdata), 1, { data: xdata });
     }
     $('orders').value = '';
     $('orders').focus();
@@ -1430,6 +1575,92 @@
   $('src-drive').addEventListener('click', function(){ setCupSrc('drive'); });
 
 
+  /* ---- fries sample ----
+     Plain fries vs animal fries only. Count, then Save sample. */
+  var fries = { fr: 0, an: 0 };
+
+  function fryTotal(){ return fries.fr + fries.an; }
+
+  function fryFace(){
+    var n = fryTotal();
+    $('c-ffr').textContent = fries.fr;
+    $('c-fan').textContent = fries.an;
+    $('m-ffr').disabled = fries.fr === 0;
+    $('m-fan').disabled = fries.an === 0;
+    $('fry-n').textContent = n + ' in sample';
+    $('fry-n').className = n ? 'which' : 'which idle';
+    $('fry-save').disabled = n === 0;
+    var d = $('fry-dist');
+    if (!n) {
+      d.innerHTML = '<span class="lab">Distribution</span>&mdash;';
+    } else {
+      d.innerHTML = '<span class="lab">Distribution of ' + n + '</span>' +
+        'Fries ' + Math.round(fries.fr / n * 100) + '%   Animal ' + Math.round(fries.an / n * 100) + '%';
+    }
+  }
+
+  function saveFries(){
+    var n = fryTotal();
+    if (n === 0) return false;
+    add('fries', 'FRIES — F:' + fries.fr + ' A:' + fries.an + ' — N ' + n, 0, { data: {
+      fries: fries.fr, animal_fries: fries.an, n: n
+    }});
+    fries = { fr: 0, an: 0 };
+    fryFace();
+    return true;
+  }
+
+  function fryBump(key, by){
+    fries[key] = Math.max(0, fries[key] + by);
+    fryFace();
+    saveState();
+  }
+  $('p-ffr').addEventListener('click', function(){ fryBump('fr',  1); });
+  $('m-ffr').addEventListener('click', function(){ fryBump('fr', -1); });
+  $('p-fan').addEventListener('click', function(){ fryBump('an',  1); });
+  $('m-fan').addEventListener('click', function(){ fryBump('an', -1); });
+  $('fry-save').addEventListener('click', function(){ saveFries(); });
+
+  /* ---- menu prices ----
+     Type the menu-board prices, then Save prices. The values are logged as
+     one entry; blanks are saved as empty. Typed values survive a reload. */
+  var PRICE_ITEMS = [{ id: 'pr-dd', key: 'double_double', tag: 'Double-Double' }, { id: 'pr-cb', key: 'cheeseburger', tag: 'Cheeseburger' }, { id: 'pr-hb', key: 'hamburger', tag: 'Hamburger' }, { id: 'pr-fr', key: 'fries', tag: 'Fries' }, { id: 'pr-af', key: 'animal_fries', tag: 'Animal fries' }, { id: 'pr-md', key: 'medium_drink', tag: 'Medium drink' }, { id: 'pr-c1', key: 'combo_1', tag: 'Combo 1' }, { id: 'pr-c2', key: 'combo_2', tag: 'Combo 2' }, { id: 'pr-c3', key: 'combo_3', tag: 'Combo 3' }];
+  var priceVals = {};
+
+  function priceNum(v){
+    v = (v || '').replace(/[^0-9.]/g, '');
+    return v === '' || isNaN(parseFloat(v)) ? null : Number(parseFloat(v).toFixed(2));
+  }
+
+  for (var pi = 0; pi < PRICE_ITEMS.length; pi++) {
+    (function(it){
+      $(it.id).addEventListener('input', function(){
+        priceVals[it.key] = this.value;
+        saveState();
+      });
+    })(PRICE_ITEMS[pi]);
+  }
+
+  function priceFace(){
+    for (var i = 0; i < PRICE_ITEMS.length; i++) {
+      $(PRICE_ITEMS[i].id).value = priceVals[PRICE_ITEMS[i].key] || '';
+    }
+  }
+
+  $('price-save').addEventListener('click', function(){
+    var data = {}, parts = [], any = false;
+    for (var i = 0; i < PRICE_ITEMS.length; i++) {
+      var it = PRICE_ITEMS[i];
+      var v = priceNum(priceVals[it.key]);
+      data[it.key] = v;
+      if (v !== null) { any = true; parts.push(it.tag + ' $' + v.toFixed(2)); }
+    }
+    if (!any) return;
+    add('prices', 'PRICES — ' + parts.join(', '), 0, { data: data });
+    $('price-n').textContent = 'Saved at ' + hms(new Date());
+    $('price-n').className = 'which';
+  });
+
   /* ---- local persistence ----
      Written after every logged event and every counter tap, so closing the
      tab, a reload, or iOS dropping the page does not lose the session.
@@ -1457,9 +1688,10 @@
       runMode: runMode,
       carry: carry,
       tblNum: tblNum, tblOpen: tblOpen, counts: counts,
-      cups: cups, cupSrc: cupSrc, holdOn: holdOn,
+      cups: cups, cupSrc: cupSrc, holdOn: holdOn, fries: fries, priceVals: priceVals,
       qNum: qNum,
       markNum: markNum,
+      ctrCarry: ctrCarry,
       markOpen: markOpen ? { num: markOpen.num, at: markOpen.at.getTime() } : null,
       qOpen: qOpen.map(function(o){
         return { num: o.num, id: o.id, ahead: o.ahead,
@@ -1496,12 +1728,15 @@
     if (st.carry)  carry  = st.carry;
     if (st.counts) counts = st.counts;
     if (st.cups)   cups   = st.cups;
+    if (st.fries)  fries  = st.fries;
+    if (st.priceVals) priceVals = st.priceVals;
     tblNum  = st.tblNum || 0;
     tblOpen = !!st.tblOpen;
     cupSrc  = st.cupSrc || 'tables';
     holdOn  = !!st.holdOn;
     qNum    = st.qNum || 0;
     markNum  = st.markNum || 0;
+    if (st.ctrCarry) ctrCarry = st.ctrCarry;
     markOpen = (st.markOpen && st.markOpen.at)
       ? { num: st.markOpen.num, at: new Date(st.markOpen.at) } : null;
     qOpen   = (st.qOpen || []).map(function(o){
@@ -1540,9 +1775,11 @@
     cups = { sm: 0, md: 0, lg: 0, xl: 0 };
     qOpen = []; qNum = 0; holdOn = false;
     markOpen = null; markNum = 0; markFace();
+    ctrCarry = { bags: 0, trays: 0, boxes: 0 }; ctrCarryFace();
     $('elapsed').textContent = 'No timer running';
     $('elapsed').className = 'el off';
-    timerFace(); tblFace(); cupFace(); carryFace(); qFace(); holdFace(); render();
+    fries = { fr: 0, an: 0 };
+    timerFace(); tblFace(); cupFace(); fryFace(); carryFace(); qFace(); holdFace(); render();
     saveState();
   });
 
@@ -1590,7 +1827,7 @@
   $('redo').addEventListener('click', function(){
     if (!redoStack.length) return;
     applySnap(redoStack.pop());
-    timerFace(); tblFace(); cupFace(); carryFace(); qFace(); holdFace(); markFace();
+    timerFace(); tblFace(); cupFace(); fryFace(); priceFace(); carryFace(); qFace(); holdFace(); markFace(); ctrCarryFace();
     tick();
     render();
   });
@@ -1602,10 +1839,14 @@
     $('m-counter').setAttribute('aria-pressed', m === 'counter'    ? 'true' : 'false');
     $('m-tables').setAttribute('aria-pressed',  m === 'tables'     ? 'true' : 'false');
     $('m-cups').setAttribute('aria-pressed',    m === 'cups'       ? 'true' : 'false');
+    $('m-fry').setAttribute('aria-pressed',     m === 'fries'      ? 'true' : 'false');
+    $('m-price').setAttribute('aria-pressed',   m === 'prices'     ? 'true' : 'false');
     $('wrap-cars').hidden    = m !== 'drive-thru';
     $('wrap-counter').hidden = m !== 'counter';
     $('wrap-tables').hidden  = m !== 'tables';
     $('wrap-cups').hidden    = m !== 'cups';
+    $('wrap-fries').hidden   = m !== 'fries';
+    $('wrap-prices').hidden  = m !== 'prices';
     placeNote(m);
   }
 
@@ -1615,6 +1856,8 @@
     var wrap = m === 'drive-thru' ? 'wrap-cars'
              : m === 'counter'    ? 'wrap-counter'
              : m === 'tables'     ? 'wrap-tables'
+             : m === 'fries'      ? 'wrap-fries'
+             : m === 'prices'     ? 'wrap-prices'
              : 'wrap-cups';
     var host = $(wrap);
     var pad  = host.querySelector('.pad');
@@ -1626,6 +1869,8 @@
   $('m-counter').addEventListener('click', function(){ setMode('counter'); });
   $('m-tables').addEventListener('click', function(){ setMode('tables'); });
   $('m-cups').addEventListener('click', function(){ setMode('cups'); });
+  $('m-fry').addEventListener('click', function(){ setMode('fries'); });
+  $('m-price').addEventListener('click', function(){ setMode('prices'); });
   /* remember which tab was open too */
   var _setMode = setMode;
   setMode = function(m){ _setMode(m); saveState(); };
@@ -1990,10 +2235,13 @@
   timerFace();
   tblFace();
   cupFace();
+  fryFace();
+  priceFace();
   carryFace();
   qFace();
   holdFace();
   markFace();
+  ctrCarryFace();
   tick();
   render();
 })();
