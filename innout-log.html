@@ -356,7 +356,9 @@
   ol.log li.k-mark .ev{color:#9FB8D3;}
   ol.log li.k-markout .ev{color:#9FB8D3;font-weight:600;}
   #mark{width:100%;margin-top:22px;}
-  #markdesc-box{margin-top:12px;}
+  .cancelbtn{width:100%;margin-top:10px;}
+  ol.log li.k-markcancel .ev,
+  ol.log li.k-qcancel .ev{color:#E58C7F;}
   ol.log li.repeat .ev{color:#E58C7F;}
   ol.log li.repeat .md{color:var(--brick);}
   .warn{
@@ -475,6 +477,7 @@
       </div>
 
       <button class="act up" id="qout" disabled>Drove off<span class="sub" id="qout-sub">Ends the oldest open car</span></button>
+      <button class="save undo cancelbtn" id="qcancel" disabled>Cancel tracked car</button>
     </div>
     <div class="dtlgrid" id="dtlgrid">
       <button class="save" data-dtl="DTL NOT FULL">DTL not full</button>
@@ -534,21 +537,14 @@
       </div>
     </div>
     <div class="linegrid" id="linegrid">
-      <button class="save" data-line="line 0">0</button>
-      <button class="save" data-line="line 1-3">1-3</button>
-      <button class="save" data-line="line 4-6">4-6</button>
-      <button class="save" data-line="line 7-10">7-10</button>
-      <button class="save" data-line="line 11+">11+</button>
+      <button class="save" data-line="0">0</button>
+      <button class="save" data-line="1-3">1-3</button>
+      <button class="save" data-line="4-6">4-6</button>
+      <button class="save" data-line="7-10">7-10</button>
+      <button class="save" data-line="11+">11+</button>
     </div>
     <button class="act car" id="mark">Mark person<span class="sub" id="mark-sub">When they order</span></button>
-    <div class="entry" id="markdesc-box" hidden>
-      <div class="row">
-        <input id="markdesc" type="text" inputmode="text" autocomplete="off"
-               autocorrect="off" spellcheck="false"
-               placeholder="pink shirt, bun">
-        <button class="go" id="markdesc-go">Save</button>
-      </div>
-    </div>
+    <button class="save undo cancelbtn" id="mark-cancel" disabled>Cancel marked person</button>
   </div>
 
   <!-- TABLES -->
@@ -798,7 +794,8 @@
     hold:'not_moving_up', up:'moved_up', order:'order',
     note:'note', table:'table', cups:'cup_sample', fries:'fries_sample', prices:'menu_prices',
     qlen:'queue_length', qtag:'queue_tag', qout:'queue_exit',
-    mark:'person_marked', markout:'person_got_order'
+    mark:'person_marked', markout:'person_got_order',
+    markcancel:'person_mark_cancelled', qcancel:'queue_cancel'
   };
   function modeKey(m){ return MODE_KEY[m] || m; }
 
@@ -842,8 +839,12 @@
      so this also runs before every new entry and ends the stale run
      retroactively, at the time of the last thing actually logged. */
   function lastActivity(){
+    /* Only look at entries logged since the current timer started, so a
+       new run is never ended back at the previous run's last entry. */
     for (var i = entries.length - 1; i >= 0; i--) {
-      if (entries[i].kind !== 'timer') return entries[i].at;
+      if (entries[i].kind === 'timer') return startAt;
+      if (startAt && entries[i].at < startAt) return startAt;
+      return entries[i].at;
     }
     return startAt;
   }
@@ -856,10 +857,15 @@
 
     var secs = (last - startAt) / 1000;
     var was = runMode;
+    /* closing stops add() from re-running this check, which used to write
+       the auto-end twice */
+    var wasClosing = closing;
+    closing = true;
     add('note', 'AUTO-ENDED — no entries for 10 min', 0, { at: last });
     add('timerend', 'TIMER ENDED — ' + label(was) + ' — RUN ' + dur(secs), 0,
         { at: last, data: { duration_sec: Math.round(secs),
                             run_mode: modeKey(was), auto_ended: true } });
+    closing = wasClosing;
     endAt = last;
     startAt = null;
     runMode = null;
@@ -1132,6 +1138,7 @@
       el.className = 'which idle';
     }
     $('qout').disabled = qOpen.length === 0;
+    $('qcancel').disabled = qOpen.length === 0;
     $('qout-sub').textContent = qOpen.length
       ? 'Front of queue: car ' + qOpen[0].num + ' — ' + qOpen[0].id
       : 'Ends the oldest open car';
@@ -1189,6 +1196,17 @@
     qFace();
   });
 
+  /* Closes the oldest open tracked car without logging a car. */
+  $('qcancel').addEventListener('click', function(){
+    if (!qOpen.length) return;
+    var o = qOpen.shift();
+    add('qcancel', 'TRACKED CAR ' + o.num + ' CANCELLED', 0, { data: {
+      tracked_car: o.num, cars_ahead: o.ahead, cars_behind: o.behind,
+      tagged_at: iso(o.at)
+    }});
+    qFace();
+  });
+
   /* ---- marked person ----
      One button, one person at a time: tap when they order (Mark person),
      tap again when they get their order (Person pick up). Does not log an
@@ -1200,33 +1218,27 @@
     $('mark').firstChild.nodeValue = markOpen ? 'Person pick up' : 'Mark person';
     $('mark').className = markOpen ? 'act hold' : 'act car';
     $('mark-sub').textContent = markOpen
-      ? 'Person ' + markOpen.num + (markOpen.desc ? ' — ' + markOpen.desc : '') +
-        ' — since ' + hms(markOpen.at)
+      ? 'Person ' + markOpen.num + ' — since ' + hms(markOpen.at)
       : 'When they order';
-    $('markdesc-box').hidden = !markOpen;
-    if (!markOpen) $('markdesc').value = '';
+    $('mark-cancel').disabled = !markOpen;
   }
 
-  /* Description of the marked person, typed after Mark person.
-     Kept on the device only while they are open; never logged or exported. */
-  function saveMarkDesc(){
+  /* Closes the open marked person without recording a wait. */
+  $('mark-cancel').addEventListener('click', function(){
     if (!markOpen) return;
-    markOpen.desc = ($('markdesc').value || '').trim();
-    $('markdesc').value = '';
-    $('markdesc').blur();
+    var o = markOpen;
+    markOpen = null;
+    add('markcancel', 'MARKED PERSON ' + o.num + ' — CANCELLED', 0, { data: {
+      marked_person: o.num, marked_at: iso(o.at)
+    }});
     markFace();
-    saveState();
-  }
-  $('markdesc-go').addEventListener('click', saveMarkDesc);
-  $('markdesc').addEventListener('keydown', function(ev){
-    if (ev.key === 'Enter') { ev.preventDefault(); saveMarkDesc(); }
   });
 
   $('mark').addEventListener('click', function(){
     var now = new Date();
     if (!markOpen) {
       markNum++;
-      markOpen = { num: markNum, at: now, desc: '' };
+      markOpen = { num: markNum, at: now };
       add('mark', 'MARKED PERSON ' + markNum + ' — ORDERED', 0, { data: {
         marked_person: markNum
       }});
@@ -1719,8 +1731,7 @@
       qNum: qNum,
       markNum: markNum,
       ctrCarry: ctrCarry,
-      markOpen: markOpen ? { num: markOpen.num, at: markOpen.at.getTime(),
-                             desc: markOpen.desc || '' } : null,
+      markOpen: markOpen ? { num: markOpen.num, at: markOpen.at.getTime() } : null,
       qOpen: qOpen.map(function(o){
         return { num: o.num, id: o.id, ahead: o.ahead,
                  behind: o.behind, at: o.at.getTime() };
@@ -1766,8 +1777,7 @@
     markNum  = st.markNum || 0;
     if (st.ctrCarry) ctrCarry = st.ctrCarry;
     markOpen = (st.markOpen && st.markOpen.at)
-      ? { num: st.markOpen.num, at: new Date(st.markOpen.at),
-          desc: st.markOpen.desc || '' } : null;
+      ? { num: st.markOpen.num, at: new Date(st.markOpen.at) } : null;
     qOpen   = (st.qOpen || []).map(function(o){
       return { num: o.num, id: o.id, ahead: o.ahead,
                behind: o.behind, at: new Date(o.at) };
@@ -1825,8 +1835,18 @@
     if (e.kind === 'car' && carNum > 0) carNum--;
     if (e.kind === 'mark') { markOpen = null; if (markNum > 0) markNum--; markFace(); }
     if (e.kind === 'markout') {
-      markOpen = { num: e.data.marked_person, at: new Date(e.data.marked_at), desc: '' };
+      markOpen = { num: e.data.marked_person, at: new Date(e.data.marked_at) };
       markFace();
+    }
+    if (e.kind === 'markcancel') {
+      markOpen = { num: e.data.marked_person, at: new Date(e.data.marked_at) };
+      markFace();
+    }
+    if (e.kind === 'qcancel') {
+      qOpen.unshift({ num: e.data.tracked_car, id: '(plate not kept)',
+                      ahead: e.data.cars_ahead, behind: e.data.cars_behind,
+                      at: new Date(e.data.tagged_at) });
+      qFace();
     }
     if (e.kind === 'qtag') { qOpen.pop(); if (qNum > 0) qNum--; qFace(); }
     if (e.kind === 'qout') {
