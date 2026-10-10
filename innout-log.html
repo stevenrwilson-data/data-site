@@ -356,9 +356,14 @@
   ol.log li.k-mark .ev{color:#9FB8D3;}
   ol.log li.k-markout .ev{color:#9FB8D3;font-weight:600;}
   #mark{width:100%;margin-top:22px;}
+  #markdesc-box{margin-top:12px;}
   .cancelbtn{width:100%;margin-top:10px;}
-  ol.log li.k-markcancel .ev,
-  ol.log li.k-qcancel .ev{color:#E58C7F;}
+  .hdrrow{display:flex;gap:10px;}
+  .hdrrow .hdrend{flex:1 1 0;min-width:0;}
+  ol.log li.k-qcancel .ev,
+  ol.log li.k-markcancel .ev{color:#E58C7F;}
+  ol.log li.k-pause .ev,
+  ol.log li.k-resume .ev{color:var(--sand);font-weight:600;}
   ol.log li.repeat .ev{color:#E58C7F;}
   ol.log li.repeat .md{color:var(--brick);}
   .warn{
@@ -388,7 +393,10 @@
 
   <header class="head">
     <div class="mark">Queue Log <span class="bar">|</span> <span id="today">—</span></div>
-    <button class="act timer running hdrend" id="hdr-end" hidden>End timer</button>
+    <div class="hdrrow">
+      <button class="act timer running hdrend" id="hdr-end" hidden>End timer</button>
+      <button class="act timer hdrend" id="hdr-pause" hidden>Pause timer</button>
+    </div>
     <div class="clock" id="clock">--:--:--</div>
     <div class="statline">
       <span class="el off" id="elapsed">No timer running</span>
@@ -537,14 +545,22 @@
       </div>
     </div>
     <div class="linegrid" id="linegrid">
-      <button class="save" data-line="0">0</button>
-      <button class="save" data-line="1-3">1-3</button>
-      <button class="save" data-line="4-6">4-6</button>
-      <button class="save" data-line="7-10">7-10</button>
-      <button class="save" data-line="11+">11+</button>
+      <button class="save" data-line="line 0">0</button>
+      <button class="save" data-line="line 1-3">1-3</button>
+      <button class="save" data-line="line 4-6">4-6</button>
+      <button class="save" data-line="line 7-10">7-10</button>
+      <button class="save" data-line="line 11+">11+</button>
     </div>
     <button class="act car" id="mark">Mark person<span class="sub" id="mark-sub">When they order</span></button>
-    <button class="save undo cancelbtn" id="mark-cancel" disabled>Cancel marked person</button>
+    <div class="entry" id="markdesc-box" hidden>
+      <div class="row">
+        <input id="markdesc" type="text" inputmode="text" autocomplete="off"
+               autocorrect="off" spellcheck="false"
+               placeholder="pink shirt, bun">
+        <button class="go" id="markdesc-go">Save</button>
+      </div>
+      <button class="save undo cancelbtn" id="mark-cancel">Cancel marked person</button>
+    </div>
   </div>
 
   <!-- TABLES -->
@@ -795,7 +811,8 @@
     note:'note', table:'table', cups:'cup_sample', fries:'fries_sample', prices:'menu_prices',
     qlen:'queue_length', qtag:'queue_tag', qout:'queue_exit',
     mark:'person_marked', markout:'person_got_order',
-    markcancel:'person_mark_cancelled', qcancel:'queue_cancel'
+    markcancel:'person_mark_cancelled', qcancel:'queue_cancel',
+    pause:'timer_paused', resume:'timer_resumed'
   };
   function modeKey(m){ return MODE_KEY[m] || m; }
 
@@ -839,33 +856,27 @@
      so this also runs before every new entry and ends the stale run
      retroactively, at the time of the last thing actually logged. */
   function lastActivity(){
-    /* Only look at entries logged since the current timer started, so a
-       new run is never ended back at the previous run's last entry. */
     for (var i = entries.length - 1; i >= 0; i--) {
-      if (entries[i].kind === 'timer') return startAt;
-      if (startAt && entries[i].at < startAt) return startAt;
-      return entries[i].at;
+      if (entries[i].kind !== 'timer') return entries[i].at;
     }
     return startAt;
   }
 
+  var paused = false;   /* true between TIMER PAUSED and TIMER RESUMED */
+
   function idleCheck(){
     if (!startAt) return false;
+    if (paused) return false;   /* no auto-end while paused */
     var last = lastActivity();
     if (!last) return false;
     if (Date.now() - last.getTime() < 10 * 60 * 1000) return false;
 
     var secs = (last - startAt) / 1000;
     var was = runMode;
-    /* closing stops add() from re-running this check, which used to write
-       the auto-end twice */
-    var wasClosing = closing;
-    closing = true;
     add('note', 'AUTO-ENDED — no entries for 10 min', 0, { at: last });
     add('timerend', 'TIMER ENDED — ' + label(was) + ' — RUN ' + dur(secs), 0,
         { at: last, data: { duration_sec: Math.round(secs),
                             run_mode: modeKey(was), auto_ended: true } });
-    closing = wasClosing;
     endAt = last;
     startAt = null;
     runMode = null;
@@ -1002,6 +1013,8 @@
     $('tbl-timer').disabled  = running;
     $('cup-timer').disabled  = running;
     $('hdr-end').hidden = !running;
+    $('hdr-pause').hidden = !running;
+    $('hdr-pause').textContent = paused ? 'Resume timer' : 'Pause timer';
   }
 
   function toggleTimer(){
@@ -1014,6 +1027,7 @@
       endAt = now;
       startAt = null;
       runMode = null;
+      paused = false;
       $('elapsed').textContent = label(was) + ' ended ' + dur(secs);
       add('timerend', 'TIMER ENDED — ' + label(was) + ' — RUN ' + dur(secs),
           0, { data: { duration_sec: Math.round(secs), run_mode: modeKey(was) } });
@@ -1021,6 +1035,7 @@
       startAt = new Date();
       runMode = mode;
       endAt = null;
+      paused = false;
       runId++;
       add('timer', 'TIMER STARTED — ' + label(mode),
           0, { data: { run_mode: modeKey(mode) } });
@@ -1030,6 +1045,21 @@
   }
   $('cars-timer').addEventListener('click', toggleTimer);
   $('hdr-end').addEventListener('click', toggleTimer);
+
+  /* Pause / resume: logs TIMER PAUSED and TIMER RESUMED. The run keeps its
+     number; it is not ended. No auto-end while paused. */
+  $('hdr-pause').addEventListener('click', function(){
+    if (!startAt) return;
+    if (!paused) {
+      add('pause', 'TIMER PAUSED', 0, { data: { run_mode: modeKey(runMode) } });
+      paused = true;
+    } else {
+      add('resume', 'TIMER RESUMED', 0, { data: { run_mode: modeKey(runMode) } });
+      paused = false;
+    }
+    timerFace();
+    saveState();
+  });
 
   function quickLog(sel, attr){
     var b = document.querySelectorAll(sel + ' [' + attr + ']');
@@ -1196,7 +1226,7 @@
     qFace();
   });
 
-  /* Closes the oldest open tracked car without logging a car. */
+  /* Cancel tracked car: closes the oldest open car without logging a car. */
   $('qcancel').addEventListener('click', function(){
     if (!qOpen.length) return;
     var o = qOpen.shift();
@@ -1218,12 +1248,26 @@
     $('mark').firstChild.nodeValue = markOpen ? 'Person pick up' : 'Mark person';
     $('mark').className = markOpen ? 'act hold' : 'act car';
     $('mark-sub').textContent = markOpen
-      ? 'Person ' + markOpen.num + ' — since ' + hms(markOpen.at)
+      ? 'Person ' + markOpen.num + (markOpen.desc ? ' — ' + markOpen.desc : '') +
+        ' — since ' + hms(markOpen.at)
       : 'When they order';
-    $('mark-cancel').disabled = !markOpen;
+    $('markdesc-box').hidden = !markOpen;
+    if (!markOpen) $('markdesc').value = '';
   }
 
-  /* Closes the open marked person without recording a wait. */
+  /* Description of the marked person, typed after Mark person.
+     Kept on the device only while they are open; never logged or exported. */
+  function saveMarkDesc(){
+    if (!markOpen) return;
+    markOpen.desc = ($('markdesc').value || '').trim();
+    $('markdesc').value = '';
+    $('markdesc').blur();
+    markFace();
+    saveState();
+  }
+  $('markdesc-go').addEventListener('click', saveMarkDesc);
+
+  /* Cancel marked person: closes the open person without recording a wait. */
   $('mark-cancel').addEventListener('click', function(){
     if (!markOpen) return;
     var o = markOpen;
@@ -1233,12 +1277,15 @@
     }});
     markFace();
   });
+  $('markdesc').addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter') { ev.preventDefault(); saveMarkDesc(); }
+  });
 
   $('mark').addEventListener('click', function(){
     var now = new Date();
     if (!markOpen) {
       markNum++;
-      markOpen = { num: markNum, at: now };
+      markOpen = { num: markNum, at: now, desc: '' };
       add('mark', 'MARKED PERSON ' + markNum + ' — ORDERED', 0, { data: {
         marked_person: markNum
       }});
@@ -1730,8 +1777,10 @@
       cups: cups, cupSrc: cupSrc, holdOn: holdOn, fries: fries, priceVals: priceVals,
       qNum: qNum,
       markNum: markNum,
+      paused: paused,
       ctrCarry: ctrCarry,
-      markOpen: markOpen ? { num: markOpen.num, at: markOpen.at.getTime() } : null,
+      markOpen: markOpen ? { num: markOpen.num, at: markOpen.at.getTime(),
+                             desc: markOpen.desc || '' } : null,
       qOpen: qOpen.map(function(o){
         return { num: o.num, id: o.id, ahead: o.ahead,
                  behind: o.behind, at: o.at.getTime() };
@@ -1775,9 +1824,11 @@
     holdOn  = !!st.holdOn;
     qNum    = st.qNum || 0;
     markNum  = st.markNum || 0;
+    paused   = !!st.paused;
     if (st.ctrCarry) ctrCarry = st.ctrCarry;
     markOpen = (st.markOpen && st.markOpen.at)
-      ? { num: st.markOpen.num, at: new Date(st.markOpen.at) } : null;
+      ? { num: st.markOpen.num, at: new Date(st.markOpen.at),
+          desc: st.markOpen.desc || '' } : null;
     qOpen   = (st.qOpen || []).map(function(o){
       return { num: o.num, id: o.id, ahead: o.ahead,
                behind: o.behind, at: new Date(o.at) };
@@ -1814,6 +1865,7 @@
     cups = { sm: 0, md: 0, lg: 0, xl: 0 };
     qOpen = []; qNum = 0; holdOn = false;
     markOpen = null; markNum = 0; markFace();
+    paused = false;
     ctrCarry = { bags: 0, trays: 0, boxes: 0 }; ctrCarryFace();
     $('elapsed').textContent = 'No timer running';
     $('elapsed').className = 'el off';
@@ -1835,11 +1887,11 @@
     if (e.kind === 'car' && carNum > 0) carNum--;
     if (e.kind === 'mark') { markOpen = null; if (markNum > 0) markNum--; markFace(); }
     if (e.kind === 'markout') {
-      markOpen = { num: e.data.marked_person, at: new Date(e.data.marked_at) };
+      markOpen = { num: e.data.marked_person, at: new Date(e.data.marked_at), desc: '' };
       markFace();
     }
     if (e.kind === 'markcancel') {
-      markOpen = { num: e.data.marked_person, at: new Date(e.data.marked_at) };
+      markOpen = { num: e.data.marked_person, at: new Date(e.data.marked_at), desc: '' };
       markFace();
     }
     if (e.kind === 'qcancel') {
@@ -1848,6 +1900,8 @@
                       at: new Date(e.data.tagged_at) });
       qFace();
     }
+    if (e.kind === 'pause')  paused = false;
+    if (e.kind === 'resume') paused = true;
     if (e.kind === 'qtag') { qOpen.pop(); if (qNum > 0) qNum--; qFace(); }
     if (e.kind === 'qout') {
       qOpen.unshift({ num: e.data.tracked_car, id: '(plate not kept)',
